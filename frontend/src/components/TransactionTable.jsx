@@ -5,26 +5,26 @@ export default function TransactionTable({
   transactionHistory, 
   activeTab, 
   setActiveTab, 
-  debitCategory, 
-  setDebitCategory, 
+  selectedCategory, 
+  setSelectedCategory, 
   activeMonth, 
   formatCurrency 
 }) {
 
   // The FIXED filtering logic
   const filteredTransactions = transactionHistory.filter(tx => {
-    if (activeTab === 'All') return true;
-    if (activeTab === 'Credit') return tx.isCredit === true;
-    if (activeTab === 'Debit') {
-      if (tx.isCredit) return false; // Hide credits
-      if (debitCategory !== 'All' && tx.type !== debitCategory) return false; // Filter by sub-category
-      return true;
-    }
+    // 1. Filter by Tab
+    if (activeTab === 'Credit' && tx.isCredit === false) return false;
+    if (activeTab === 'Debit' && tx.isCredit === true) return false;
+    
+    // 2. Filter by Category
+    if (selectedCategory !== 'All Categories' && tx.type !== selectedCategory) return false;
+
     return true;
   });
 
-  // Extract unique categories for the debit dropdown
-  const uniqueDebitCategories = ['All', ...new Set(transactionHistory.filter(tx => !tx.isCredit).map(tx => tx.type))];
+  // Extract unique categories dynamically from transaction history
+  const uniqueCategories = ['All Categories', ...new Set(transactionHistory.map(tx => tx.type).filter(Boolean))];
 
   const handleExportCSV = () => {
     const headers = ['Ref ID', 'Transaction Date', 'Customer', 'Amount (INR)', 'Status', 'Type', 'Flow'];
@@ -52,7 +52,6 @@ export default function TransactionTable({
               key={tab} 
               onClick={() => {
                 setActiveTab(tab);
-                if (tab !== 'Debit') setDebitCategory('All'); // Reset category when leaving Debit tab
               }}
               style={{ fontSize: 14, fontWeight: activeTab === tab ? 700 : 600, color: activeTab === tab ? '#4f46e5' : '#64748b', borderBottom: activeTab === tab ? '2px solid #4f46e5' : 'none', paddingBottom: '20px', marginBottom: '-20px', cursor: 'pointer', transition: 'color 0.2s' }}
             >
@@ -60,18 +59,19 @@ export default function TransactionTable({
             </span>
           ))}
 
-          {/* DYNAMIC DEBIT DROPDOWN */}
-          {activeTab === 'Debit' && (
+          {/* DYNAMIC CATEGORY DROPDOWN */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '8px' }}>
+            <span style={{ fontSize: '14px', fontWeight: '600', color: '#64748b' }}>Category:</span>
             <select
-              value={debitCategory}
-              onChange={(e) => setDebitCategory(e.target.value)}
-              style={{ marginLeft: '8px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px', fontWeight: '600', color: '#0f172a', backgroundColor: '#f8fafc', outline: 'none', cursor: 'pointer' }}
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px', fontWeight: '600', color: '#0f172a', backgroundColor: '#f8fafc', outline: 'none', cursor: 'pointer' }}
             >
-              {uniqueDebitCategories.map(cat => (
+              {uniqueCategories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
-          )}
+          </div>
         </div>
 
         <button onClick={handleExportCSV} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Export CSV</button>
@@ -100,7 +100,7 @@ export default function TransactionTable({
           </div>
         )) : (
           <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', fontSize: 14, fontWeight: 500 }}>
-            No transactions found for "{activeTab}" {activeTab === 'Debit' && debitCategory !== 'All' ? `under category "${debitCategory}"` : ''}.
+            No transactions found for "{activeTab}" {selectedCategory !== 'All Categories' ? `under category "${selectedCategory}"` : ''}.
           </div>
         )}
       </div>
