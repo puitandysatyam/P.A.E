@@ -458,52 +458,19 @@ export default function DashboardScreen({ tokenData }) {
       {/* Render sub views */}
       {activeView === 'Overview' && (
         <View style={styles.overviewContainer}>
-          {/* UPLOADER BLOCK */}
-          {!showResults && !isAnalyzing && !isUploading && (
-            <View style={styles.uploaderCard}>
-              <Text style={styles.cardHeaderTitle}>Process New Data</Text>
-              <Text style={styles.cardHeaderSubtitle}>
-                Select a bank statement to process.
-              </Text>
+          {/* TOP ACTIONS ROW */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: '#0f172a' }}>Financial Overview</Text>
+            <TouchableOpacity 
+              style={{ backgroundColor: '#4f46e5', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+              onPress={() => setSelectedFile(null)}
+            >
+              <UploadCloud size={14} color='#fff' />
+              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Import Data</Text>
+            </TouchableOpacity>
+          </View>
 
-              {!selectedFile ? (
-                <View style={styles.uploaderList}>
-                  <TouchableOpacity
-                    style={styles.fileSelectorItem}
-                    onPress={handleSelectFile}
-                    activeOpacity={0.7}
-                  >
-                    <UploadCloud size={20} color="#4f46e5" />
-                    <View style={styles.fileItemText}>
-                      <Text style={styles.fileItemName}>Upload Statement</Text>
-                      <Text style={styles.fileItemSize}>Tap to select PDF or CSV</Text>
-                    </View>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.selectedFileView}>
-                  <View style={styles.fileRow}>
-                    <CheckCircle size={20} color="#059669" />
-                    <View style={styles.fileTextWrapper}>
-                      <Text style={styles.selectedFileName}>{selectedFile.name}</Text>
-                      <Text style={styles.selectedFileSize}>{selectedFile.size}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.actionButtons}>
-                    <TouchableOpacity style={styles.cancelBtn} onPress={() => setSelectedFile(null)}>
-                      <Text style={styles.cancelBtnText}>Cancel</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.analyzeBtn} onPress={handleProcessFile}>
-                      <Database size={14} color="#fff" />
-                      <Text style={styles.analyzeBtnText}>Analyze</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* SPINNER ANIMATION STATE */}
+          {/* UPLOADING & ANALYZING STATES */}
           {isUploading && (
             <View style={styles.simulationCard}>
               <ActivityIndicator size="large" color="#4f46e5" />
@@ -525,130 +492,39 @@ export default function DashboardScreen({ tokenData }) {
             </View>
           )}
 
-          {/* BREAKDOWN CHART PREVIEW */}
-          {showResults && (
-            <View style={styles.breakdownCard}>
-              <View style={styles.breakdownHeader}>
-                <View style={styles.titleRow}>
-                  {chartView === 'pie' ? (
-                    <PieChart size={18} color="#4f46e5" />
-                  ) : (
-                    <BarChart2 size={18} color="#4f46e5" />
-                  )}
-                  <Text style={styles.chartTitleText}>Expense Breakdown</Text>
-                </View>
+          {(!showResults && !isAnalyzing && !isUploading) && (
+            <View style={styles.uploaderCard}>
+              <Text style={styles.cardHeaderTitle}>Process New Data</Text>
+              <Text style={styles.cardHeaderSubtitle}>Select a bank statement to process.</Text>
 
-                <View style={styles.chartControls}>
-                  <TouchableOpacity
-                    style={styles.toggleBtn}
-                    onPress={() => setChartView(chartView === 'pie' ? 'bar' : 'pie')}
-                  >
-                    <Text style={styles.toggleBtnText}>
-                      {chartView === 'pie' ? 'Bar View' : 'Pie View'}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.refreshBtn} onPress={resetUploader}>
-                    <RotateCcw size={13} color="#4f46e5" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {chartView === 'pie' ? (
-                <View style={styles.donutRow}>
-                  <View style={styles.donutOuter}>
-                    <View style={styles.donutInner}>
-                      <Text style={styles.donutLabel}>Total</Text>
-                      <Text style={styles.donutVal}>₹5.7L</Text>
-                    </View>
-                  </View>
-                  <View style={styles.donutLegend}>
-                    {chartData.map((cat, i) => (
-                      <View key={i} style={styles.legendItem}>
-                        <View style={styles.legendRow}>
-                          <View style={[styles.legendDot, { backgroundColor: cat.color }]} />
-                          <Text style={styles.legendText}>{cat.label}</Text>
-                        </View>
-                        <View style={styles.barWrap}>
-                          <View style={[styles.barFill, { width: `${cat.pct}%`, backgroundColor: cat.color }]} />
-                          <Text style={styles.barPct}>{cat.pct}%</Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.barGraphRow}>
-                  {chartData.map((cat, i) => (
-                    <View key={i} style={styles.graphCol}>
-                      <Text style={styles.graphPctLabel}>{cat.pct}%</Text>
-                      <View style={styles.graphBarContainer}>
-                        <View style={[styles.graphBarFill, { height: `${cat.pct}%`, backgroundColor: cat.color }]} />
-                      </View>
-                      <Text style={styles.graphNameLabel} numberOfLines={1}>{cat.label}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* PROCESSED STATEMENTS LIST */}
-          <View style={styles.statementsHistoryCard}>
-            <Text style={styles.statementsHeaderTitle}>Processed Statements</Text>
-            <View style={styles.statementsList}>
-              <TouchableOpacity
-                style={[styles.statementItemBtn, activeMonth === 'All-Time' && styles.statementItemBtnActive]}
-                onPress={() => loadPastStatement('All-Time')}
-                activeOpacity={0.7}
-              >
-                <View style={styles.statementTextCol}>
-                  <Text style={[styles.statementMonthText, activeMonth === 'All-Time' && styles.statementMonthTextActive]}>All-Time</Text>
-                  <Text style={styles.statementTxnText}>Combined Ledger</Text>
-                </View>
-                <View style={styles.statementBadge}>
-                  <Text style={[styles.statementBadgeText, { color: '#059669', backgroundColor: '#d1fae5' }]}>AGGREGATED</Text>
-                </View>
-              </TouchableOpacity>
-
-              {pastStatements.map((stmt, i) => (
-                <TouchableOpacity
-                  key={i}
-                  style={[
-                    styles.statementItemBtn,
-                    activeMonth === stmt.month && styles.statementItemBtnActive,
-                  ]}
-                  onPress={() => loadPastStatement(stmt.id, stmt.month)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.statementTextCol}>
-                    <Text
-                      style={[
-                        styles.statementMonthText,
-                        activeMonth === stmt.month && styles.statementMonthTextActive,
-                      ]}
-                    >
-                      {stmt.month}
-                    </Text>
-                    <Text style={styles.statementTxnText}>{stmt.txCount} txns</Text>
-                  </View>
-                  <View style={styles.statementBadge}>
-                    <Text style={styles.statementBadgeText}>{stmt.status}</Text>
+              {!selectedFile ? (
+                <TouchableOpacity style={styles.fileSelectorItem} onPress={handleSelectFile} activeOpacity={0.7}>
+                  <UploadCloud size={20} color="#4f46e5" />
+                  <View style={styles.fileItemText}>
+                    <Text style={styles.fileItemName}>Upload Statement</Text>
+                    <Text style={styles.fileItemSize}>Tap to select PDF or CSV</Text>
                   </View>
                 </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* ANOMALY BANNER */}
-          {transactionHistory.some(tx => tx.isAnomaly) && (
-            <View style={{ backgroundColor: '#fee2e2', borderColor: '#fca5a5', borderWidth: 1, padding: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-              <AlertTriangle size={24} color="#ef4444" style={{ marginRight: 12 }} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '800', color: '#991b1b' }}>Anomalous Transactions Detected</Text>
-                <Text style={{ fontSize: 13, color: '#b91c1c', marginTop: 4 }}>
-                  Our AI Autoencoder has flagged {transactionHistory.filter(tx => tx.isAnomaly).length} transaction(s) as highly unusual based on your spending patterns. Please review them below.
-                </Text>
-              </View>
+              ) : (
+                <View style={styles.selectedFileView}>
+                  <View style={styles.fileRow}>
+                    <CheckCircle size={20} color="#059669" />
+                    <View style={styles.fileTextWrapper}>
+                      <Text style={styles.selectedFileName}>{selectedFile.name}</Text>
+                      <Text style={styles.selectedFileSize}>{selectedFile.size}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.actionButtons}>
+                    <TouchableOpacity style={styles.cancelBtn} onPress={() => setSelectedFile(null)}>
+                      <Text style={styles.cancelBtnText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.analyzeBtn} onPress={handleProcessFile}>
+                      <Database size={14} color="#fff" />
+                      <Text style={styles.analyzeBtnText}>Analyze</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
             </View>
           )}
 
@@ -675,6 +551,116 @@ export default function DashboardScreen({ tokenData }) {
               </View>
             </View>
           </View>
+
+          {/* BREAKDOWN CHART PREVIEW */}
+          {showResults && (
+            <View style={styles.breakdownCard}>
+              <View style={styles.breakdownHeader}>
+                <View style={styles.titleRow}>
+                  {chartView === 'pie' ? (
+                    <PieChart size={18} color="#4f46e5" />
+                  ) : (
+                    <BarChart2 size={18} color="#4f46e5" />
+                  )}
+                  <Text style={styles.chartTitleText}>Expense Breakdown</Text>
+                </View>
+
+                <View style={styles.chartControls}>
+                  <TouchableOpacity style={styles.toggleBtn} onPress={() => setChartView(chartView === 'pie' ? 'bar' : 'pie')}>
+                    <Text style={styles.toggleBtnText}>{chartView === 'pie' ? 'Bar View' : 'Pie View'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {chartView === 'pie' ? (
+                <View style={styles.donutRow}>
+                  <View style={styles.donutOuter}>
+                    <View style={styles.donutInner}>
+                      <Text style={styles.donutLabel}>Total</Text>
+                      <Text style={styles.donutVal}>₹{(totalExpense / 100000).toFixed(1)}L</Text>
+                    </View>
+                  </View>
+                  <View style={styles.donutLegend}>
+                    {chartData.map((cat, i) => (
+                      <View key={i} style={styles.legendItem}>
+                        <View style={styles.legendRow}>
+                          <View style={[styles.legendDot, { backgroundColor: cat.color }]} />
+                          <Text style={styles.legendText}>{cat.label}</Text>
+                        </View>
+                        <View style={styles.barWrap}>
+                          <View style={[styles.barFill, { backgroundColor: cat.color, width: `${Math.max(5, cat.numPct)}%` }]} />
+                          <Text style={styles.barPct}>{cat.pct}%</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.barGraphRow}>
+                  {chartData.map((cat, i) => (
+                    <View key={i} style={styles.graphCol}>
+                      <Text style={styles.graphPctLabel}>{cat.pct}%</Text>
+                      <View style={styles.graphBarContainer}>
+                        <View style={[styles.graphBarFill, { height: `${Math.max(5, cat.numPct)}%`, backgroundColor: cat.color }]} />
+                      </View>
+                      <Text style={styles.graphNameLabel} numberOfLines={1}>{cat.label}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* PROCESSED STATEMENTS LIST - Horizontal Scroll */}
+          {pastStatements.length > 0 && (
+          <View style={styles.statementsHistoryCard}>
+            <Text style={styles.statementsHeaderTitle}>Processed Statements</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+              <TouchableOpacity
+                style={[styles.statementItemBtn, activeMonth === 'All-Time' && styles.statementItemBtnActive]}
+                onPress={() => loadPastStatement('All-Time')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.statementTextCol}>
+                  <Text style={[styles.statementMonthText, activeMonth === 'All-Time' && styles.statementMonthTextActive]}>All-Time</Text>
+                  <Text style={styles.statementTxnText}>Combined Ledger</Text>
+                </View>
+              </TouchableOpacity>
+
+              {pastStatements.map((stmt, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={[
+                    styles.statementItemBtn,
+                    activeMonth === stmt.month && styles.statementItemBtnActive,
+                  ]}
+                  onPress={() => loadPastStatement(stmt.id, stmt.month)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.statementTextCol}>
+                    <Text style={[styles.statementMonthText, activeMonth === stmt.month && styles.statementMonthTextActive]}>
+                      {stmt.month}
+                    </Text>
+                    <Text style={styles.statementTxnText}>{stmt.txCount} txns</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+          )}
+
+          {/* ANOMALY BANNER */}
+          {transactionHistory.some(tx => tx.isAnomaly) && (
+            <View style={{ backgroundColor: '#fee2e2', borderColor: '#fca5a5', borderWidth: 1, padding: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <AlertTriangle size={24} color="#ef4444" style={{ marginRight: 12 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: '#991b1b' }}>Anomalous Transactions Detected</Text>
+                <Text style={{ fontSize: 13, color: '#b91c1c', marginTop: 4 }}>
+                  Our AI Autoencoder has flagged {transactionHistory.filter(tx => tx.isAnomaly).length} transaction(s) as highly unusual based on your spending patterns. Please review them below.
+                </Text>
+              </View>
+            </View>
+          )}
 
           {/* TRANSACTIONS TABLE CARD */}
           <View style={styles.transactionsCard}>
@@ -704,9 +690,6 @@ export default function DashboardScreen({ tokenData }) {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-              <TouchableOpacity style={styles.exportBtn} onPress={simulateExport} activeOpacity={0.7}>
-                <Text style={styles.exportBtnText}>Export CSV</Text>
-              </TouchableOpacity>
             </View>
 
             {/* DEBIT CATEGORIES FILTER ROW */}
@@ -739,7 +722,7 @@ export default function DashboardScreen({ tokenData }) {
             <View style={styles.transactionsList}>
               {filteredTransactions.length > 0 ? (
                 filteredTransactions.map((tx) => (
-                  <View key={tx.ref} style={[styles.txRow, tx.isAnomaly && { backgroundColor: '#fef2f2' }]}>
+                  <View key={tx.ref} style={[styles.txRow, tx.isAnomaly && { backgroundColor: '#fef2f2', paddingHorizontal: 12, borderRadius: 8 }]}>
                     <View
                       style={[
                         styles.txAvatar,
@@ -770,7 +753,6 @@ export default function DashboardScreen({ tokenData }) {
                       </Text>
                       <Text style={styles.txTypeText}>{tx.type}</Text>
                     </View>
-                    <MoreVertical size={14} color="#cbd5e1" style={styles.actionsIcon} />
                   </View>
                 ))
               ) : (
@@ -782,8 +764,7 @@ export default function DashboardScreen({ tokenData }) {
           </View>
         </View>
       )}
-
-      {activeView === 'Subscriptions' && (
+{activeView === 'Subscriptions' && (
         <View style={styles.subTabWrapper}>
           <SubscriptionsTab
             formatCurrency={formatCurrency}
