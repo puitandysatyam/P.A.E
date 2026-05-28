@@ -9,14 +9,16 @@ import {
 import TransactionTable from './TransactionTable';
 import InvestmentRecommendations from './InvestmentRecommendations';
 import TypewriterText from './TypewriterText';
+import UpgradeModal from './UpgradeModal';
 
-export default function Dashboard({ onLogout, tokenData }) {
+export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
   // --- UI & UPLOAD STATES ---
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [pollMessage, setPollMessage] = useState('');
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   
   // Results & Viewing States
   const [showResults, setShowResults] = useState(false); 
@@ -392,6 +394,12 @@ export default function Dashboard({ onLogout, tokenData }) {
         },
         body: JSON.stringify({ message: chatMessage, history: newHistory })
       });
+      if (res.status === 402) {
+        setIsUpgradeModalOpen(true);
+        setChatHistory(chatHistory); // Revert history
+        setIsChatLoading(false);
+        return;
+      }
       const data = await res.json();
       setChatHistory([...newHistory, { role: 'assistant', content: data.reply || 'Sorry, I could not process that.' }]);
     } catch (e) {
@@ -401,13 +409,47 @@ export default function Dashboard({ onLogout, tokenData }) {
     setIsChatLoading(false);
   };
 
+  const handleUpgrade = async () => {
+    try {
+      if (activeDocId) {
+        await fetch(`${API_URL}/api/statements/${activeDocId}/upgrade`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${tokenData?.token}` }
+        });
+      }
+      if (onUpdateTier) onUpdateTier('PRO');
+      setIsUpgradeModalOpen(false);
+      alert('Upgraded to PRO successfully! You now have unlimited chats and premium accuracy.');
+    } catch (e) {
+      console.error('Upgrade failed', e);
+      alert('Upgrade failed. Please try again.');
+    }
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', color: '#0f172a', scrollBehavior: 'smooth' }}>
       
       {/* ── NAVBAR ── */}
       <nav style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '16px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 50 }}>
-        <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.04em', color: '#0f172a', cursor: 'pointer' }} onClick={() => setActiveView('Overview')}>
-          PR<sup style={{ color: '#4f46e5', fontSize: 14, verticalAlign: 'super' }}>2</sup>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.04em', color: '#0f172a', cursor: 'pointer' }} onClick={() => setActiveView('Overview')}>
+            PR<sup style={{ color: '#4f46e5', fontSize: 14, verticalAlign: 'super' }}>2</sup>
+          </div>
+          {tokenData?.subscriptionTier === 'PRO' && (
+            <span style={{
+              marginLeft: '12px',
+              background: 'linear-gradient(135deg, #fef08a 0%, #eab308 100%)',
+              color: '#854d0e',
+              fontSize: '11px',
+              fontWeight: 900,
+              padding: '4px 8px',
+              borderRadius: '8px',
+              letterSpacing: '0.05em',
+              boxShadow: '0 4px 10px rgba(234, 179, 8, 0.3)'
+            }}>
+              PRO
+            </span>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
           
@@ -754,6 +796,12 @@ export default function Dashboard({ onLogout, tokenData }) {
         <InvestmentRecommendations />
 
       </main>
+
+      <UpgradeModal 
+        isOpen={isUpgradeModalOpen} 
+        onClose={() => setIsUpgradeModalOpen(false)} 
+        onUpgrade={handleUpgrade} 
+      />
 
       <style>{`
         @keyframes spin { 100% { transform: rotate(360deg); } }

@@ -6,6 +6,7 @@ services:
     build: 
       context: ./ai_service_aws
       dockerfile: Dockerfile
+     
     container_name: ai_service_aws
     ports:
       - "8080:8080"
@@ -18,6 +19,7 @@ services:
     build: 
       context: ./api_service_aws
       dockerfile: Dockerfile
+  
     container_name: api_service_aws
     ports:
       - "8081:8081"

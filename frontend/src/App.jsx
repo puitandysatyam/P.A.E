@@ -24,11 +24,18 @@ export default function App() {
     localStorage.removeItem('pr2_tokenData');
   };
 
+  const handleUpdateTier = (newTier) => {
+    if (!tokenData) return;
+    const updatedData = { ...tokenData, subscriptionTier: newTier };
+    setTokenData(updatedData);
+    localStorage.setItem('pr2_tokenData', JSON.stringify(updatedData));
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <div style={{ flex: 1 }}>
         {tokenData ? (
-          <Dashboard onLogout={handleLogout} tokenData={tokenData} />
+          <Dashboard onLogout={handleLogout} tokenData={tokenData} onUpdateTier={handleUpdateTier} />
         ) : (
           <HomePage onLogin={handleLogin} />
         )}
