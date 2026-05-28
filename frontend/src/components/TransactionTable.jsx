@@ -90,7 +90,7 @@ export default function TransactionTable({
               <div style={{ width: 24, height: 24, flexShrink: 0, borderRadius: '50%', background: tx.isAnomaly ? '#ef4444' : (tx.isCredit ? '#4f46e5' : '#f59e0b'), color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>{tx.customer.charAt(0)}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden', minWidth: 0 }} title={tx.customer}>
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.customer}</span>
-                {tx.isAnomaly && <span style={{ color: '#ef4444', padding: '2px 6px', background: '#fee2e2', borderRadius: 4, fontSize: 10, fontWeight: 800, flexShrink: 0 }}>⚠️ ANOMALY</span>}
+                {tx.isAnomaly && <span style={{ color: '#ef4444', padding: '2px 6px', background: '#fee2e2', borderRadius: 4, fontSize: 10, fontWeight: 800, flexShrink: 0 }}>⚠️ NEEDS REVIEW</span>}
               </div>
             </div>
             <div style={{ color: tx.isCredit ? '#059669' : '#0f172a' }}>{tx.isCredit ? '+' : '-'}{formatCurrency(tx.amount)}</div>

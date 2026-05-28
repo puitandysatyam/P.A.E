@@ -649,13 +649,15 @@ export default function DashboardScreen({ tokenData }) {
           </View>
           )}
 
-          {/* ANOMALY BANNER */}
+           {/* FLAG BANNER */}
           {transactionHistory.some(tx => tx.isAnomaly) && (
-            <View style={{ backgroundColor: '#fee2e2', borderColor: '#fca5a5', borderWidth: 1, padding: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <AlertTriangle size={24} color="#ef4444" style={{ marginRight: 12 }} />
+            <View style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca', borderWidth: 1, borderRadius: 8, padding: 16, marginBottom: 24, flexDirection: 'row', alignItems: 'flex-start' }}>
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#fee2e2', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                <Text style={{ color: '#ef4444', fontSize: 20 }}>⚠️</Text>
+              </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '800', color: '#991b1b' }}>Anomalous Transactions Detected</Text>
-                <Text style={{ fontSize: 13, color: '#b91c1c', marginTop: 4 }}>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: '#991b1b' }}>Transactions Flagged for Review</Text>
+                <Text style={{ marginTop: 4, fontSize: 13, color: '#b91c1c', lineHeight: 20 }}>
                   Our AI Autoencoder has flagged {transactionHistory.filter(tx => tx.isAnomaly).length} transaction(s) as highly unusual based on your spending patterns. Please review them below.
                 </Text>
               </View>
@@ -737,7 +739,7 @@ export default function DashboardScreen({ tokenData }) {
                       <Text style={styles.txNameText}>{tx.customer}</Text>
                       {tx.isAnomaly && (
                         <View style={{ backgroundColor: '#fee2e2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start', marginTop: 4 }}>
-                          <Text style={{ color: '#ef4444', fontSize: 10, fontWeight: 'bold' }}>⚠️ ANOMALY</Text>
+                          <Text style={{ color: '#ef4444', fontSize: 10, fontWeight: 'bold' }}>⚠️ NEEDS REVIEW</Text>
                         </View>
                       )}
                       <Text style={[styles.txDateText, { marginTop: tx.isAnomaly ? 4 : 0 }]}>{tx.date}</Text>

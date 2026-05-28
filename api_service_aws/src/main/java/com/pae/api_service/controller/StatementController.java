@@ -11,11 +11,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
+import io.github.bucket4j.Refill;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/api/statements")
@@ -32,6 +37,9 @@ public class StatementController {
 
     @Autowired
     private SqsProducerService sqsProducerService;
+    
+    // Rate Limiter Cache for /chat
+    private final Map<String, Bucket> chatRateLimits = new ConcurrentHashMap<>();
 
     // 1. Upload Document (Asynchronous Processing)
     @PostMapping("/upload")
@@ -158,10 +166,26 @@ public class StatementController {
 
     // 5. Chat with Document Context
     @PostMapping("/{id}/chat")
-    public ResponseEntity<java.util.Map<String, String>> chatWithDocument(@PathVariable String id, @RequestBody com.pae.api_service.dto.ChatRequest chatRequest) {
+    public ResponseEntity<?> chatWithDocument(@PathVariable String id, @RequestBody com.pae.api_service.dto.ChatRequest chatRequest) {
         try {
             StatementDocument doc = dynamoDbService.getStatement(id);
             if (doc == null) return ResponseEntity.notFound().build();
+
+            // Business Rate Limiting based on Subscription Tier
+            String tier = doc.getSubscriptionTier();
+            if (tier == null || "FREE".equalsIgnoreCase(tier)) {
+                // Free users get exactly 3 chats per document
+                Bucket bucket = chatRateLimits.computeIfAbsent(doc.getId(), k -> 
+                    Bucket.builder().addLimit(Bandwidth.classic(3, Refill.intervally(3, Duration.ofDays(365)))).build()
+                );
+                
+                if (!bucket.tryConsume(1)) {
+                    // Return HTTP 402 Payment Required to trigger the frontend paywall modal
+                    return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(
+                        Map.of("error", "Chat limit reached. Upgrade to PRO to unlock Unlimited AI Chats and Premium Accuracy.")
+                    );
+                }
+            }
 
             // Build simple context from metrics
             String context = "Client total income: " + doc.getSummaryMetrics().getTotalIncome() + 
@@ -200,7 +224,24 @@ public class StatementController {
 
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(java.util.Map.of("error", e.getMessage()));
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    // 6. Upgrade to PRO
+    @PostMapping("/{id}/upgrade")
+    public ResponseEntity<?> upgradeToPro(@PathVariable String id) {
+        try {
+            StatementDocument doc = dynamoDbService.getStatement(id);
+            if (doc == null) return ResponseEntity.notFound().build();
+            
+            doc.setSubscriptionTier("PRO");
+            dynamoDbService.saveStatement(doc);
+            
+            return ResponseEntity.ok(Map.of("message", "Successfully upgraded to PRO tier!", "tier", "PRO"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
         }
     }
 }

@@ -32,7 +32,7 @@ class DatabaseHelper:
             print(f"Error getting document from DynamoDB: {e}")
             return None
 
-    def update_document_results(self, doc_id: str, transactions: list, summary_metrics: dict, ai_summary: str = None) -> bool:
+    def update_document_results(self, doc_id: str, transactions: list, summary_metrics: dict, ai_summary: str = None, ad_payload: dict = None) -> bool:
         try:
             update_expr = "SET transactions = :t, summaryMetrics = :s, #st = :status"
             expr_attr_values = {
@@ -47,6 +47,10 @@ class DatabaseHelper:
             if ai_summary:
                 update_expr += ", aiSummary = :ai"
                 expr_attr_values[':ai'] = ai_summary
+                
+            if ad_payload:
+                update_expr += ", adPayload = :ad"
+                expr_attr_values[':ad'] = ad_payload
 
             self.table.update_item(
                 Key={'id': doc_id},

@@ -183,7 +183,7 @@ function ProductMockup() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <AlertTriangle size={14} color="#f97316" />
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#f97316', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Anomaly Detected</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#f97316', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Flagged for Review</span>
           </div>
           <div style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>3× spike in UPI transfers</div>
           <div style={{ fontSize: 11, color: '#888', marginTop: 3 }}>Autoencoder flagged Apr 18–22</div>

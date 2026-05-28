@@ -52,3 +52,5 @@ application.properties
 target/
 __pycache__/
 *.class
+
+tasklist.md

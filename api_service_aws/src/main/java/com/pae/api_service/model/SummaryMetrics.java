@@ -12,8 +12,18 @@ public class SummaryMetrics {
     private String financialHealth;
     private String highestCategory;
     private Map<String, Integer> categoryBreakdown;
+    
+    // Feature 7: Cashflow Forecaster
+    private Integer predictedBurnRate;
+    private Integer predictedDiscretionaryIncome;
 
     public SummaryMetrics() {}
+
+    public Integer getPredictedBurnRate() { return predictedBurnRate; }
+    public void setPredictedBurnRate(Integer predictedBurnRate) { this.predictedBurnRate = predictedBurnRate; }
+
+    public Integer getPredictedDiscretionaryIncome() { return predictedDiscretionaryIncome; }
+    public void setPredictedDiscretionaryIncome(Integer predictedDiscretionaryIncome) { this.predictedDiscretionaryIncome = predictedDiscretionaryIncome; }
 
     public Integer getTotalIncome() { return totalIncome; }
     public void setTotalIncome(Integer totalIncome) { this.totalIncome = totalIncome; }
