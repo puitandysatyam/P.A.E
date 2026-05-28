@@ -25,7 +25,7 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
   const [chartView, setChartView] = useState('pie'); 
   const [activeMonth, setActiveMonth] = useState('Current'); 
   const [activeTab, setActiveTab] = useState('All'); 
-  const [debitCategory, setDebitCategory] = useState('All'); 
+  const [selectedCategory, setSelectedCategory] = useState('All Categories'); 
   const [activeView, setActiveView] = useState('Overview'); 
   const [hasLoadedInitial, setHasLoadedInitial] = useState(false);
   const [statementMonth, setStatementMonth] = useState(() => {
@@ -44,7 +44,7 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
       customer: tx.rawNarration || 'Unknown',
       amount: Math.abs(tx.amount || 0),
       status: 'Completed',
-      type: tx.type || 'Other',
+      type: tx.mlData?.predictedCategory || tx.type || 'Other',
       isAnomaly: tx.mlData?.isAnomaly === true,
       isCredit: (tx.type || '').toUpperCase().trim() === 'CREDIT' || ['Income', 'Savings', 'Refund', 'Credit'].includes((tx.type || '').trim())
     }));
@@ -663,8 +663,8 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
                 transactionHistory={transactionHistory}
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
-                debitCategory={debitCategory}
-                setDebitCategory={setDebitCategory}
+                selectedCategory={selectedCategory}
+                setSelectedCategory={setSelectedCategory}
                 activeMonth={activeMonth}
                 formatCurrency={formatCurrency}
               />
