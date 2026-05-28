@@ -95,7 +95,7 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
   
   // Dynamic States from Backend
   const [summaryMetrics, setSummaryMetrics] = useState({
-    totalIncome: 0, totalExpense: 0, financialHealth: 'CALCULATING', categoryBreakdown: {}
+    totalIncome: 0, totalExpense: 0, financialHealth: 'CALCULATING', categoryBreakdown: {}, predictedBurnRate: 0, predictedDiscretionaryIncome: 0
   });
   const [subscriptionsList, setSubscriptionsList] = useState([]);
   const [aiSummaryText, setAiSummaryText] = useState('');
@@ -113,6 +113,8 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
     let combinedIncome = 0;
     let combinedExpense = 0;
     let combinedCategory = {};
+    let latestBurnRate = 0;
+    let latestDiscretionary = 0;
 
     docsToAggregate.forEach(d => {
       if (d.transactions) {
@@ -123,6 +125,8 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
       if (d.summaryMetrics) {
         combinedIncome += (d.summaryMetrics.totalIncome || 0);
         combinedExpense += (d.summaryMetrics.totalExpense || 0);
+        if (d.summaryMetrics.predictedBurnRate) latestBurnRate = d.summaryMetrics.predictedBurnRate;
+        if (d.summaryMetrics.predictedDiscretionaryIncome) latestDiscretionary = d.summaryMetrics.predictedDiscretionaryIncome;
         if (d.summaryMetrics.categoryBreakdown) {
           Object.entries(d.summaryMetrics.categoryBreakdown).forEach(([k, v]) => {
             combinedCategory[k] = (combinedCategory[k] || 0) + v;
@@ -145,7 +149,9 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
       totalIncome: combinedIncome,
       totalExpense: combinedExpense,
       categoryBreakdown: combinedCategory,
-      financialHealth: healthStatus
+      financialHealth: healthStatus,
+      predictedBurnRate: latestBurnRate,
+      predictedDiscretionaryIncome: latestDiscretionary
     });
 
     setActiveMonth(monthLabel);
@@ -704,9 +710,17 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'baseline', gap: 4 }}><span style={{ fontSize: 42, fontWeight: 900, color: summaryMetrics.financialHealth === 'HEALTHY' ? '#059669' : (summaryMetrics.financialHealth === 'WARNING' ? '#d97706' : '#dc2626'), lineHeight: 1 }}>{summaryMetrics.financialHealth === 'HEALTHY' ? '82' : (summaryMetrics.financialHealth === 'WARNING' ? '55' : (summaryMetrics.financialHealth === 'CRITICAL' ? '30' : '--'))}</span><span style={{ fontSize: 16, fontWeight: 700, color: '#94a3b8' }}>/ 100</span></div>
               </div>
 
-              {/* COMBINED ADVISOR & CHATBOT UI */}
+              {/* COMBINED FORECAST, ADVISOR & CHATBOT UI */}
               {(aiSummaryText || activeDocId) && (
-                <div style={{ background: 'linear-gradient(135deg, #f3f0ff, #e0e7ff)', padding: '20px', borderRadius: '12px', marginBottom: '32px', border: '1px solid #c7d2fe', display: 'flex', flexDirection: 'column', transition: 'all 0.3s ease' }}>
+                <div className="animate-gradient" style={{ background: 'linear-gradient(135deg, #f3f0ff, #e0e7ff, #f3f0ff)', padding: '20px', borderRadius: '12px', marginBottom: '32px', border: '1px solid #c7d2fe', display: 'flex', flexDirection: 'column', transition: 'all 0.3s ease' }}>
+                  
+                  {/* FUTURE FORECAST */}
+                  <div style={{ fontSize: 14, fontWeight: 800, color: '#4f46e5', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}><Activity size={16} /> Future Forecast</div>
+                  <p style={{ fontSize: 14, color: '#1e1b4b', lineHeight: 1.6, margin: 0, paddingBottom: 16, marginBottom: 16, borderBottom: '1px solid rgba(79, 70, 229, 0.2)' }}>
+                    Based on your fixed habits and subscriptions, your baseline expenses for next month are {formatCurrency(summaryMetrics.predictedBurnRate || 0)}. You will have exactly {formatCurrency(summaryMetrics.predictedDiscretionaryIncome || 0)} left for discretionary spending.
+                  </p>
+
+                  {/* AI ADVISOR */}
                   <div style={{ fontSize: 14, fontWeight: 800, color: '#4f46e5', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}><BrainCircuit size={16} /> Gemini AI Advisor</div>
                   
                   {/* Initial Summary Text */}
