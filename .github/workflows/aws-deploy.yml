@@ -36,6 +36,10 @@ jobs:
         IMAGE_TAG: ${{ github.sha }}
       run: |
         cd ai_service_aws
+        
+        # Download ML models from S3 because they are too large for GitHub (267MB+)
+        aws s3 sync s3://pae.ml.models/distilbert_categorization_model ./model_weights/distilbert_categorization_model
+        
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_AI:$IMAGE_TAG .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY_AI:$IMAGE_TAG
         docker tag $ECR_REGISTRY/$ECR_REPOSITORY_AI:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY_AI:latest
