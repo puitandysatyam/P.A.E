@@ -37,21 +37,52 @@ def calculate_sketchiness(merchant_string):
     non_alpha_count = sum(1 for char in merchant_string if not char.isalpha())
     return round(non_alpha_count / len(merchant_string), 2)
 
-def extract_merchant(text):
+def extract_merchant(text, txn_type="DEBIT"):
     text = text.strip()
-    if text.startswith("UPI/"):
-        parts = text.split("/")
-        if len(parts) > 3:
-            return parts[3][:15].strip()
-        elif len(parts) > 1:
-            return parts[-1][:15].strip()
-    elif "NEFT" in text or "IMPS" in text:
+    text_lower = text.lower()
+    
+    # 1. Hardcoded Deterministic Brands
+    brands = {
+        "netflix": ("Netflix", "Subscription"),
+        "spotify": ("Spotify", "Subscription"),
+        "amazon prime": ("Amazon Prime", "Subscription"),
+        "hotstar": ("Hotstar", "Subscription"),
+        "swiggy": ("Swiggy", "Food"),
+        "zomato": ("Zomato", "Food"),
+        "groww": ("Groww", "Investment"),
+        "zerodha": ("Zerodha", "Investment"),
+        "upstox": ("Upstox", "Investment"),
+        "amazon": ("Amazon", "Shopping"),
+        "flipkart": ("Flipkart", "Shopping"),
+        "myntra": ("Myntra", "Shopping"),
+        "blinkit": ("Blinkit", "Food"),
+        "zepto": ("Zepto", "Food"),
+        "uber": ("Uber", "Travel"),
+        "ola": ("Ola", "Travel")
+    }
+    
+    for key, val in brands.items():
+        if key in text_lower:
+            return val[0], val[1]
+            
+    # 2. UPI Logic
+    if text.startswith("UPI/") or "UPI" in text or "upi" in text_lower:
+        # Extract VPA if present
+        vpa_match = re.search(r'[\w\.-]+@[\w\.-]+', text)
+        vpa = vpa_match.group(0) if vpa_match else "Unknown UPI"
+        
+        # Determine direction
+        cat = "UPI Received" if txn_type == "CREDIT" else "UPI Sent"
+        return vpa, cat
+        
+    # 3. Basic fallback
+    if "NEFT" in text or "IMPS" in text:
         parts = text.split("-")
         if len(parts) > 2:
-            return parts[2][:15].strip()
+            return parts[2][:15].strip(), None
     elif "/" in text:
-        return text.split("/")[0][:15].strip()
-    return text[:15].strip()
+        return text.split("/")[0][:15].strip(), None
+    return text[:15].strip(), None
 
 def process_statement(doc_id: str):
     print(f"Processing Document ID: {doc_id}")
@@ -112,10 +143,12 @@ def process_statement(doc_id: str):
     merchant_dates = defaultdict(list)
     merchant_amounts = defaultdict(list)
     date_amounts = defaultdict(list)
+    amount_txns = defaultdict(list)
     
     for txn in transactions:
         text = txn.get("rawNarration", "")
-        merchant_name = extract_merchant(text)
+        txn_type = txn.get("type", "DEBIT")
+        merchant_name, _ = extract_merchant(text, txn_type)
         date_str = txn.get("date", "")
         # DynamoDB uses Decimal for floats, convert to float
         amount = float(txn.get("amount", 0.0))
@@ -124,16 +157,19 @@ def process_statement(doc_id: str):
         merchant_amounts[merchant_name].append(amount)
         if amount > 1000 and amount % 1000 == 0:
             date_amounts[date_str].append(amount)
+        if txn_type == "DEBIT" and amount > 0:
+            amount_txns[amount].append(text)
 
     confused_txns = []
 
     # 2. First Pass: DistilBERT Classification & Feature Extraction
     for i, txn in enumerate(transactions):
         text = txn.get("rawNarration", "")
-        merchant_name = extract_merchant(text)
         date_str = txn.get("date", "")
         amount = float(txn.get("amount", 0.0))
         txn_type = txn.get("type", "DEBIT")
+        
+        merchant_name, hardcoded_cat = extract_merchant(text, txn_type)
         
         # 3. Anomaly Detection
         sketchiness = calculate_sketchiness(merchant_name)
@@ -141,14 +177,21 @@ def process_statement(doc_id: str):
         if txn_type == "CREDIT":
             is_anomaly = False
         else:
-            is_anomaly = ml_engine.detect_anomaly(amount, merchant_sketchiness_score=sketchiness, velocity_score=velocity)
+            # We don't have exact time_of_day from standard bank PDFs, so we omit it and use the default
+            is_anomaly = ml_engine.detect_anomaly(amount, merchant_sketchiness_score=sketchiness)
         
         # Categorization
-        cat_result = ml_engine.categorize_transaction(text)
-        predicted_category = cat_result["predictedCategory"]
-        confidence = cat_result.get("confidenceScore", 1.0)
-        top2_distance = cat_result.get("top2Distance", 1.0)
-        source = "DistilBERT"
+        if hardcoded_cat:
+            predicted_category = hardcoded_cat
+            confidence = 1.0
+            top2_distance = 1.0
+            source = "Deterministic Engine"
+        else:
+            cat_result = ml_engine.categorize_transaction(text)
+            predicted_category = cat_result["predictedCategory"]
+            confidence = cat_result.get("confidenceScore", 1.0)
+            top2_distance = cat_result.get("top2Distance", 1.0)
+            source = "DistilBERT"
         
         # Subscription vs Routine Spend Analysis
         is_recurring = False
@@ -156,20 +199,33 @@ def process_statement(doc_id: str):
         amounts_list = merchant_amounts[merchant_name]
         
         if txn_type == "DEBIT":
-            if merchant_count > 3:
+            # 1. Exact amount match + Text similarity (e.g. Txn ID patterns)
+            if len(amount_txns[amount]) >= 2:
+                texts = amount_txns[amount]
+                # If the first 5 characters match, they likely share an ID or Merchant Code
+                first_chars = [t[:5].lower() for t in texts]
+                if first_chars.count(text[:5].lower()) >= 2:
+                    is_recurring = True
+                    if not hardcoded_cat:
+                        predicted_category = "Subscription"
+
+            # 2. Frequent Merchant (Routine Habit)
+            if not is_recurring and merchant_count > 3:
                 variance = max(amounts_list) - min(amounts_list)
                 avg_amount = sum(amounts_list) / merchant_count
                 if avg_amount > 0 and (variance / avg_amount) < 0.20:
                     is_recurring = True
                     predicted_category = "Routine Habit"
-            elif merchant_count == 1:
+                    
+            # 3. Fallback: Known Subscription or Ends in 9
+            elif not is_recurring and merchant_count == 1:
                 amount_ends_in_9 = str(int(amount)).endswith("9")
                 if predicted_category == "Subscription" or amount_ends_in_9:
                     is_recurring = True
                     predicted_category = "Subscription"
         
         # Queue low confidence transactions for Batch LLM (except if already tagged as Routine)
-        if (confidence < 0.60 or top2_distance < 0.1) and predicted_category != "Routine Habit":
+        if (confidence < 0.99 or top2_distance < 0.1) and predicted_category != "Routine Habit":
             confused_txns.append({'index': i, 'text': text})
             
         txn["mlData"] = {
@@ -181,7 +237,8 @@ def process_statement(doc_id: str):
         }
 
     # 3. Batch LLM Fallback via AWS Bedrock (Claude 3 Haiku)
-    if confused_txns:
+    subscription_tier = doc.get("subscriptionTier", "FREE")
+    if confused_txns and subscription_tier == "PRO":
         print(f"Batching {len(confused_txns)} confused transactions to AWS Bedrock...")
         prompt = "Categorize the following transactions into strictly one of these categories: [Food, Shopping, Rent, Travel, Salary, UPI Transfer, Subscription, EMI, Investment, Bank Fees]. Return ONLY a valid JSON array of objects with keys 'index' and 'category'. Do not wrap in markdown or give any explanations.\n\nTransactions:\n"
         for c in confused_txns:
@@ -258,13 +315,52 @@ def process_statement(doc_id: str):
         "anomaliesCount": anomalies_count,
         "financialHealth": health_status,
         "highestCategory": highest_cat,
-        "categoryBreakdown": {k: int(v) for k, v in category_totals.items()}
+        "categoryBreakdown": {k: int(v) for k, v in category_totals.items()},
+        "predictedBurnRate": int(total_recurring_expense),
+        "predictedDiscretionaryIncome": int(max(0, total_income - total_recurring_expense))
     }
 
     # Fix transaction amounts for DynamoDB (Convert float to int for safety in JSON structure)
     for txn in transactions:
         txn['amount'] = int(float(txn['amount']))
         txn['mlData']['confidenceScore'] = str(txn['mlData']['confidenceScore']) # Keep float precision as string
+
+    # 4.5 Targeted Affiliate Ads (Server-Driven UI)
+    ad_payload = None
+    food_shopping_spend = category_totals.get("Food", 0) + category_totals.get("Shopping", 0)
+    
+    if total_income > (total_expense * 2) and total_income > 50000:
+        # High Idle Cash Scenario
+        ad_payload = {
+            "title": "Make your idle cash work for you",
+            "description": f"You have over ₹{int(total_income - total_expense):,} sitting idle. Invest in Index Funds today.",
+            "cta": "Invest with Groww",
+            "link": "https://groww.in"
+        }
+    elif food_shopping_spend > 10000:
+        # High Spender Scenario
+        ad_payload = {
+            "title": "Stop leaving money on the table",
+            "description": f"You spent ₹{int(food_shopping_spend):,} on Food & Shopping. Get 10% cashback.",
+            "cta": "Apply for Swiggy HDFC",
+            "link": "https://hdfcbank.com/swiggy"
+        }
+    elif category_totals.get("Rent", 0) > 15000 or category_totals.get("UPI Transfer", 0) > 20000:
+        # High Transfers / Rent Scenario
+        ad_payload = {
+            "title": "Get rewarded for paying rent",
+            "description": "Pay rent via credit card and get up to 2% cashback instantly.",
+            "cta": "Pay via CRED",
+            "link": "https://cred.club"
+        }
+    else:
+        # Generic Fallback Ad
+        ad_payload = {
+            "title": "Upgrade your financial life",
+            "description": "Unlock premium insights, advanced budgeting tools, and more.",
+            "cta": "Upgrade to PR² Pro",
+            "link": "#upgrade"
+        }
 
     # 5. Generate AI Financial Advice instantly before saving COMPLETED status
     ai_summary = "AI Advisor is currently analyzing your data. Please check back later."
@@ -282,7 +378,7 @@ def process_statement(doc_id: str):
     except Exception as e:
         print(f"Error generating AI summary: {e}")
 
-    success = db_helper.update_document_results(doc_id, transactions, summary_metrics, ai_summary)
+    success = db_helper.update_document_results(doc_id, transactions, summary_metrics, ai_summary, ad_payload)
     if success:
         print(f"Successfully processed and updated DynamoDB for {doc_id}")
         return True

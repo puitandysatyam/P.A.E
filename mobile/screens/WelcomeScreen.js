@@ -78,7 +78,7 @@ const FloatingCard = () => {
       {/* Overlapping mini alert widget */}
       <View style={styles.floatingAlert}>
         <AlertTriangle size={12} color="#f97316" />
-        <Text style={styles.alertText}>Anomaly Detected</Text>
+        <Text style={styles.alertText}>Flagged for Review</Text>
       </View>
     </Animated.View>
   );

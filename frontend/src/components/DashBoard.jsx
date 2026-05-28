@@ -639,13 +639,13 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
               {/* VIEW 1: OVERVIEW (Using the new external Component!) */}
               {activeView === 'Overview' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24, animation: 'fadeIn 0.4s ease-in' }}>
-              {/* ANOMALY BANNER */}
+              {/* FLAG BANNER */}
               {transactionHistory.some(tx => tx.isAnomaly) && (
-                <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', padding: '16px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12, animation: 'fadeIn 0.4s ease-in' }}>
-                  <AlertTriangle size={24} color="#ef4444" style={{ flexShrink: 0 }} />
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: 16, marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#ef4444', fontSize: 20 }}>⚠️</div>
                   <div>
-                    <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#991b1b' }}>Anomalous Transactions Detected</h4>
-                    <p style={{ margin: 0, fontSize: 13, color: '#b91c1c', marginTop: 4 }}>
+                    <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#991b1b' }}>Transactions Flagged for Review</h4>
+                    <p style={{ margin: '4px 0 0 0', fontSize: 13, color: '#b91c1c', lineHeight: 1.5 }}>
                       Our AI Autoencoder has flagged {transactionHistory.filter(tx => tx.isAnomaly).length} transaction(s) as highly unusual based on your spending patterns. Please review them below.
                     </p>
                   </div>

@@ -17,8 +17,16 @@ public class StatementDocument {
     private List<Transaction> transactions;
     private String aiSummary;
     private String rawText;
+    private String subscriptionTier = "FREE";
+    private Map<String, String> adPayload;
 
     public StatementDocument() {}
+
+    public Map<String, String> getAdPayload() { return adPayload; }
+    public void setAdPayload(Map<String, String> adPayload) { this.adPayload = adPayload; }
+
+    public String getSubscriptionTier() { return subscriptionTier; }
+    public void setSubscriptionTier(String subscriptionTier) { this.subscriptionTier = subscriptionTier; }
 
     public String getRawText() { return rawText; }
     public void setRawText(String rawText) { this.rawText = rawText; }

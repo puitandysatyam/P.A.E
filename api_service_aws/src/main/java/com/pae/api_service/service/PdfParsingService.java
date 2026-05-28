@@ -8,6 +8,11 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.*;
+import software.amazon.awssdk.services.textract.TextractClient;
+import software.amazon.awssdk.services.textract.model.DetectDocumentTextRequest;
+import software.amazon.awssdk.services.textract.model.DetectDocumentTextResponse;
+import software.amazon.awssdk.services.textract.model.Document;
+import software.amazon.awssdk.services.textract.model.Block;
 import software.amazon.awssdk.core.SdkBytes;
 
 import java.util.*;
@@ -26,18 +31,52 @@ public class PdfParsingService {
     }
 
     public String parseAndSanitize(byte[] fileBytes) throws Exception {
-        // 1. Extract text locally using Apache PDFBox (BLAZING FAST, 0.5s instead of 30s)
+        System.out.println("🚀 [Smart Routing] Attempting local OCR via Apache PDFBox...");
         String extractedPdfText = "";
-        try (PDDocument document = Loader.loadPDF(fileBytes)) {
+        
+        try (PDDocument pdfDocument = Loader.loadPDF(fileBytes)) {
             PDFTextStripper pdfStripper = new PDFTextStripper();
-            extractedPdfText = pdfStripper.getText(document);
+            extractedPdfText = pdfStripper.getText(pdfDocument);
+        } catch (Exception e) {
+            System.out.println("⚠️ [Smart Routing] PDFBox failed to parse document. Falling back to AWS Textract.");
         }
 
-        if (extractedPdfText == null || extractedPdfText.trim().isEmpty()) {
-            throw new IllegalArgumentException("Could not extract text from PDF. Scanned images are not yet supported without dedicated OCR.");
+        if (extractedPdfText != null && !extractedPdfText.trim().isEmpty()) {
+            System.out.println("✅ [Smart Routing] Success! PDFBox extracted text in milliseconds ($0 Cost).");
+            return extractedPdfText;
         }
 
-        return extractedPdfText;
+        // Fallback to AWS Textract for scanned images
+        System.out.println("🔄 [Smart Routing] Scanned Image Detected. Initiating AWS Textract Fallback...");
+        StringBuilder textractText = new StringBuilder();
+        try (TextractClient textractClient = TextractClient.builder()
+                .region(Region.AP_SOUTH_1)
+                .credentialsProvider(DefaultCredentialsProvider.create())
+                .build()) {
+                
+            Document document = Document.builder()
+                    .bytes(SdkBytes.fromByteArray(fileBytes))
+                    .build();
+                    
+            DetectDocumentTextRequest request = DetectDocumentTextRequest.builder()
+                    .document(document)
+                    .build();
+                    
+            DetectDocumentTextResponse response = textractClient.detectDocumentText(request);
+            
+            for (Block block : response.blocks()) {
+                if ("LINE".equals(block.blockTypeAsString())) {
+                    textractText.append(block.text()).append("\n");
+                }
+            }
+        }
+
+        if (textractText == null || textractText.toString().trim().isEmpty()) {
+            throw new IllegalArgumentException("Could not extract text from PDF via PDFBox or AWS Textract.");
+        }
+
+        System.out.println("✅ [Smart Routing] AWS Textract successfully extracted text from image.");
+        return textractText.toString();
     }
     private String sanitizeNarration(String narration) {
         return ACCOUNT_NUM_PATTERN.matcher(narration).replaceAll("****$1");

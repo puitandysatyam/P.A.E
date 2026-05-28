@@ -52,7 +52,10 @@ jobs:
         docker tag $ECR_REGISTRY/$ECR_REPOSITORY_API:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY_API:latest
         docker push $ECR_REGISTRY/$ECR_REPOSITORY_API:latest
 
-    - name: Trigger App Runner Deployment (Optional)
-      # AWS App Runner natively supports "Auto-deploy on ECR image update". 
-      # If you enabled that checkbox in the AWS App Runner console, pushing to ECR automatically triggers the deployment!
-      run: echo "Images pushed to ECR. AWS App Runner will automatically pull 'latest' and deploy!"
+    - name: Trigger ECS Express Deployment (AI Service)
+      run: |
+        aws ecs update-service --cluster default --service ai-service-express --force-new-deployment --region ${{ env.AWS_REGION }}
+
+    - name: Trigger ECS Express Deployment (API Service)
+      run: |
+        aws ecs update-service --cluster default --service api-service-express --force-new-deployment --region ${{ env.AWS_REGION }}
