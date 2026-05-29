@@ -53,7 +53,12 @@ export default function AuthModal({ onClose, onSuccess }) {
     setIsLoading(true);
 
     const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-    const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
+    let API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
+    
+    // Remove trailing slash to prevent double slashes (//) which cause Spring Boot 404s (and fake CORS errors)
+    if (API_URL.endsWith('/')) {
+      API_URL = API_URL.slice(0, -1);
+    }
     
     try {
       const res = await fetch(`${API_URL}${endpoint}`, {

@@ -104,6 +104,7 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
   const [chatMessage, setChatMessage] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [activeAd, setActiveAd] = useState(null);
 
   const [allDocs, setAllDocs] = useState([]);
 
@@ -138,6 +139,13 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
     setTransactionHistory(mapTransactions(mergedTx));
     setSubscriptionsList(mapSubscriptions(mergedRecurring));
     
+    // Set dynamic ad payload from the most recent document
+    if (docsToAggregate.length > 0) {
+      setActiveAd(docsToAggregate[docsToAggregate.length - 1].adPayload || null);
+    } else {
+      setActiveAd(null);
+    }
+    
     // Calculate Health
     let healthStatus = 'GOOD';
     if (combinedIncome === 0 && combinedExpense > 0) healthStatus = 'CRITICAL';
@@ -159,7 +167,10 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
     setIsAnalyzing(false);
   };
 
-  const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
+  let API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
+  if (API_URL.endsWith('/')) {
+    API_URL = API_URL.slice(0, -1);
+  }
 
   // Hydrate on startup
   useEffect(() => {
@@ -807,7 +818,7 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
         </div>
 
         {/* WE NOW CALL THE NEW RECOMMENDATIONS COMPONENT HERE */}
-        <InvestmentRecommendations />
+        <InvestmentRecommendations adPayload={activeAd} onUpgrade={() => setIsUpgradeModalOpen(true)} />
 
       </main>
 

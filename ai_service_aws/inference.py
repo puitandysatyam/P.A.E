@@ -24,15 +24,15 @@ class MLEngine:
     def _load_artifacts(self):
         print("Initializing ML Engine...")
         
-        # 1. Load FULL Fine-Tuned DistilBERT Model
+        # 1. Load FULL Fine-Tuned DistilBERT Model (kept for presentation purposes)
         distilbert_path = os.path.join(MODEL_DIR, "distilbert_categorization_model")
         if not os.path.exists(distilbert_path):
-            raise FileNotFoundError(f"Missing DistilBERT Model! You must place the 'distilbert_categorization_model' folder from Kaggle into {MODEL_DIR}")
-            
-        self.tokenizer = AutoTokenizer.from_pretrained(distilbert_path)
-        self.distilbert_model = AutoModelForSequenceClassification.from_pretrained(distilbert_path)
-        self.distilbert_model.eval()
-        print("Successfully loaded FULL Fine-Tuned DistilBERT Model.")
+            print(f"Warning: Missing DistilBERT Model at {distilbert_path}")
+        else:
+            self.tokenizer = AutoTokenizer.from_pretrained(distilbert_path)
+            self.distilbert_model = AutoModelForSequenceClassification.from_pretrained(distilbert_path)
+            self.distilbert_model.eval()
+            print("Successfully loaded FULL Fine-Tuned DistilBERT Model.")
 
         # Map the 10 HuggingFace categories to our UI's 8 categories
         self.category_mapper = {
@@ -71,6 +71,9 @@ class MLEngine:
         print("MLEngine fully initialized and ready for production!")
 
     def categorize_transaction(self, text: str) -> dict:
+        if not self.tokenizer or not self.distilbert_model:
+            return {"predictedCategory": "Pending", "confidenceScore": 0.0, "top2Distance": 0.0}
+
         inputs = self.tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=32)
         
         with torch.no_grad():
