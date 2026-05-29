@@ -38,7 +38,13 @@ export default function FinHealthTab({ summaryMetrics = {}, aiSummaryText = '', 
           </View>
           
           {aiSummaryText ? (
-            <Text style={styles.aiSummaryText}>{aiSummaryText}</Text>
+            <Text style={styles.aiSummaryText}>
+              <Text style={{ fontWeight: '600' }}>
+                Based on your fixed habits and subscriptions, your baseline expenses for next month are ₹{summaryMetrics.predictedBurnRate?.toLocaleString('en-IN') || 0}. You will have exactly ₹{summaryMetrics.predictedDiscretionaryIncome?.toLocaleString('en-IN') || 0} left for discretionary spending.
+              </Text>
+              {"\n\n"}
+              {aiSummaryText}
+            </Text>
           ) : null}
 
           <View style={styles.chatContainer}>

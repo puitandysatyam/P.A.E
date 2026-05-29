@@ -124,6 +124,11 @@ public class StatementController {
                     if (aiSummary != null && !aiSummary.isEmpty()) {
                         response.put("aiSummary", aiSummary);
                     }
+                    
+                    Map<String, String> adPayload = document.getAdPayload();
+                    if (adPayload != null) {
+                        response.put("adPayload", adPayload);
+                    }
                 }
             }
             
@@ -187,10 +192,26 @@ public class StatementController {
                 }
             }
 
-            // Build simple context from metrics
-            String context = "Client total income: " + doc.getSummaryMetrics().getTotalIncome() + 
-                             ", total expense: " + doc.getSummaryMetrics().getTotalExpense() + 
-                             ". Category Breakdown: " + doc.getSummaryMetrics().getCategoryBreakdown().toString() + ".";
+            // Build enhanced context from metrics to make AI Advisor more accurate
+            String context = "Client total income: ₹" + doc.getSummaryMetrics().getTotalIncome() + 
+                             ", total expense: ₹" + doc.getSummaryMetrics().getTotalExpense() + 
+                             ". \nCategory Breakdown: " + doc.getSummaryMetrics().getCategoryBreakdown().toString() + 
+                             ". \nFinancial Health Score: " + doc.getSummaryMetrics().getFinancialHealth() +
+                             ". \nPredicted Baseline Expenses for Next Month: ₹" + doc.getSummaryMetrics().getPredictedBurnRate() +
+                             ". \nPredicted Discretionary Income left: ₹" + doc.getSummaryMetrics().getPredictedDiscretionaryIncome() +
+                             ". \nYour initial advice to them was: '" + (doc.getAiSummary() != null ? doc.getAiSummary() : "") + "'.";
+
+            // Pseudo-RAG: Inject all transaction history directly into the context
+            StringBuilder txContext = new StringBuilder();
+            if (doc.getTransactions() != null && !doc.getTransactions().isEmpty()) {
+                txContext.append("\n\nTransaction History:\n");
+                for (com.pae.api_service.model.Transaction t : doc.getTransactions()) {
+                    String category = t.getMlData() != null ? t.getMlData().getPredictedCategory() : "Uncategorized";
+                    txContext.append(String.format("- Date: %s | Narration: %s | Amount: %.2f | Type: %s | Category: %s\n", 
+                        t.getDate(), t.getRawNarration(), t.getAmount(), t.getType(), category));
+                }
+            }
+            context += txContext.toString();
 
             software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient bedrockClient = software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient.create();
             

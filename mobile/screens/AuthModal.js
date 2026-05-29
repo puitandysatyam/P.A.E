@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 
-const API_BASE_URL = 'http://192.168.1.10:8081'; // Local development server IP
+const API_BASE_URL = 'https://curiously-optimum-muskox.ngrok-free.app';
 
 export default function AuthModal({ visible, onClose, onSuccess }) {
   const [isLogin, setIsLogin] = useState(true);

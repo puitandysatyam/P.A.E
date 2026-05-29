@@ -397,6 +397,12 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
   const handleSendChat = async () => {
     if (!chatMessage.trim() || !activeDocId) return;
     
+    // Check limit BEFORE optimistically updating the UI
+    if (chatHistory.length >= 6 && tokenData?.subscriptionTier !== 'PRO') {
+      setIsUpgradeModalOpen(true);
+      return;
+    }
+
     const newHistory = [...chatHistory, { role: 'user', content: chatMessage }];
     setChatHistory(newHistory);
     setChatMessage('');
@@ -725,18 +731,13 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
               {(aiSummaryText || activeDocId) && (
                 <div className="animate-gradient" style={{ background: 'linear-gradient(135deg, #f3f0ff, #e0e7ff, #f3f0ff)', padding: '20px', borderRadius: '12px', marginBottom: '32px', border: '1px solid #c7d2fe', display: 'flex', flexDirection: 'column', transition: 'all 0.3s ease' }}>
                   
-                  {/* FUTURE FORECAST */}
-                  <div style={{ fontSize: 14, fontWeight: 800, color: '#4f46e5', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}><Activity size={16} /> Future Forecast</div>
-                  <p style={{ fontSize: 14, color: '#1e1b4b', lineHeight: 1.6, margin: 0, paddingBottom: 16, marginBottom: 16, borderBottom: '1px solid rgba(79, 70, 229, 0.2)' }}>
-                    Based on your fixed habits and subscriptions, your baseline expenses for next month are {formatCurrency(summaryMetrics.predictedBurnRate || 0)}. You will have exactly {formatCurrency(summaryMetrics.predictedDiscretionaryIncome || 0)} left for discretionary spending.
-                  </p>
-
                   {/* AI ADVISOR */}
                   <div style={{ fontSize: 14, fontWeight: 800, color: '#4f46e5', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}><BrainCircuit size={16} /> Gemini AI Advisor</div>
                   
                   {/* Initial Summary Text */}
                   {aiSummaryText && (
                     <p style={{ fontSize: 14, color: '#1e1b4b', lineHeight: 1.6, margin: 0, marginBottom: chatHistory.length > 0 ? 16 : 0, paddingBottom: chatHistory.length > 0 ? 16 : 0, borderBottom: chatHistory.length > 0 ? '1px solid rgba(79, 70, 229, 0.2)' : 'none' }}>
+                      Based on your fixed habits and subscriptions, your baseline expenses for next month are {formatCurrency(summaryMetrics.predictedBurnRate || 0)}. You will have exactly {formatCurrency(summaryMetrics.predictedDiscretionaryIncome || 0)} left for discretionary spending.<br /><br />
                       {aiSummaryText}
                     </p>
                   )}

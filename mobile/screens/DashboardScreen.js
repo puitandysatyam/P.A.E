@@ -37,7 +37,7 @@ import FinHealthTab from './components/FinHealthTab';
 
 const { width } = Dimensions.get('window');
 
-const API_BASE_URL = 'http://192.168.1.10:8081';
+const API_BASE_URL = 'https://curiously-optimum-muskox.ngrok-free.app';
 
 const MOCK_FILES = [];
 
@@ -116,6 +116,7 @@ export default function DashboardScreen({ tokenData }) {
   });
   const [subscriptionsList, setSubscriptionsList] = useState([]);
   const [aiSummaryText, setAiSummaryText] = useState('');
+  const [activeAd, setActiveAd] = useState(null);
 
   // --- AI Chat States ---
   const [chatMessage, setChatMessage] = useState('');
@@ -124,6 +125,14 @@ export default function DashboardScreen({ tokenData }) {
 
   const handleSendChat = async () => {
     if (!chatMessage.trim() || !activeDocId) return;
+
+    if (chatHistory.length >= 6 && tokenData?.subscriptionTier !== 'PRO') {
+      Alert.alert(
+        "Chat Limit Reached",
+        "Upgrade to PRO to unlock Unlimited AI Chats and Premium Accuracy."
+      );
+      return;
+    }
 
     const newChat = [...chatHistory, { role: 'user', content: chatMessage }];
     setChatHistory(newChat);
@@ -169,6 +178,8 @@ export default function DashboardScreen({ tokenData }) {
     let combinedIncome = 0;
     let combinedExpense = 0;
     let combinedCategory = {};
+    let burnRate = 0;
+    let discIncome = 0;
 
     docsToAggregate.forEach(d => {
       if (d.transactions) {
@@ -179,6 +190,8 @@ export default function DashboardScreen({ tokenData }) {
       if (d.summaryMetrics) {
         combinedIncome += (d.summaryMetrics.totalIncome || 0);
         combinedExpense += (d.summaryMetrics.totalExpense || 0);
+        if (d.summaryMetrics.predictedBurnRate !== undefined && d.summaryMetrics.predictedBurnRate !== null) burnRate = d.summaryMetrics.predictedBurnRate;
+        if (d.summaryMetrics.predictedDiscretionaryIncome !== undefined && d.summaryMetrics.predictedDiscretionaryIncome !== null) discIncome = d.summaryMetrics.predictedDiscretionaryIncome;
         if (d.summaryMetrics.categoryBreakdown) {
           Object.entries(d.summaryMetrics.categoryBreakdown).forEach(([k, v]) => {
             combinedCategory[k] = (combinedCategory[k] || 0) + v;
@@ -200,7 +213,9 @@ export default function DashboardScreen({ tokenData }) {
       totalIncome: combinedIncome,
       totalExpense: combinedExpense,
       categoryBreakdown: combinedCategory,
-      financialHealth: healthStatus
+      financialHealth: healthStatus,
+      predictedBurnRate: burnRate,
+      predictedDiscretionaryIncome: discIncome
     });
 
     setActiveMonth(monthLabel);
@@ -224,7 +239,10 @@ export default function DashboardScreen({ tokenData }) {
             if (completedDocs.length > 0) {
               fetch(`${API_BASE_URL}/api/statements/status/${completedDocs[completedDocs.length - 1].id}`, { headers: { 'Authorization': `Bearer ${tokenData?.token}` } })
                 .then(r => r.json())
-                .then(d => { if (d.aiSummary) setAiSummaryText(d.aiSummary); });
+                .then(d => {
+                  if (d.aiSummary) setAiSummaryText(d.aiSummary);
+                  if (d.adPayload) setActiveAd(d.adPayload);
+                });
             }
 
             const getDocumentDateRange = (d, index) => {
@@ -270,6 +288,7 @@ export default function DashboardScreen({ tokenData }) {
         });
         const statData = await statRes.json();
         if (statData.aiSummary) setAiSummaryText(statData.aiSummary);
+        if (statData.adPayload) setActiveAd(statData.adPayload);
       }
     } catch (e) {
       console.error(e);
@@ -397,7 +416,10 @@ export default function DashboardScreen({ tokenData }) {
       if (doc && doc.status === 'COMPLETED') {
         fetch(`${API_BASE_URL}/api/statements/status/${doc.id}`, { headers: { 'Authorization': `Bearer ${tokenData?.token}` } })
           .then(r => r.json())
-          .then(d => { if (d.aiSummary) setAiSummaryText(d.aiSummary); });
+          .then(d => {
+            if (d.aiSummary) setAiSummaryText(d.aiSummary);
+            if (d.adPayload) setActiveAd(d.adPayload);
+          });
       }
     }
   };
@@ -436,6 +458,42 @@ export default function DashboardScreen({ tokenData }) {
     );
   };
 
+  // --- Dynamic Ad Logic ---
+  let adCategory = 'invest';
+  if (activeAd) {
+    const cta = activeAd.cta || '';
+    if (cta.toLowerCase().includes('amazon') || cta.toLowerCase().includes('flipkart') || cta.toLowerCase().includes('shopping')) {
+      adCategory = 'shopping';
+    } else if (cta.toLowerCase().includes('rent') || cta.toLowerCase().includes('cheq') || cta.toLowerCase().includes('cred') || cta.toLowerCase().includes('bills')) {
+      adCategory = 'bills';
+    }
+  }
+
+  let ad1, ad2, ad3;
+
+  if (adCategory === 'shopping') {
+    ad1 = { title: 'Amazon Pay ICICI Card', desc: 'Earn 5% flat cashback on all Amazon shopping. Lifetime free.', image: require('../assets/amazon.jpg'), cta: 'Apply Now', risk: 'Cashback', riskBg: '#d1fae5', riskColor: '#059669' };
+    ad3 = { title: 'Flipkart Axis Bank Card', desc: 'Flat 5% cashback on Flipkart and Myntra. Top tier rewards.', image: require('../assets/flipkart.jpg'), cta: 'Apply Now', risk: 'Rewards', riskBg: '#fce7f3', riskColor: '#be185d' };
+  } else if (adCategory === 'bills') {
+    ad1 = { title: 'Cheq App', desc: 'Pay your credit card bills on time and earn 1% cashback in the form of Cheq chips for rewards.', image: require('../assets/cheq.jpg'), cta: 'Download Cheq', risk: 'Rewards', riskBg: '#fce7f3', riskColor: '#be185d' };
+    ad3 = { title: 'RedGirraffe RentPay', desc: 'Pay rent using your credit card at the lowest convenience fee in the market (only 0.39%).', image: require('../assets/redgirraffe.jpg'), cta: 'Start Paying', risk: 'Savings', riskBg: '#d1fae5', riskColor: '#059669' };
+  } else {
+    ad1 = { title: 'ICICI Prudential Liquid Fund', desc: 'Earn ~7.1% p.a. with instant withdrawal capabilities. A much better alternative to leaving cash idle.', image: require('../assets/icici.jpg'), cta: 'Explore Fund', risk: 'Low Risk', riskBg: '#d1fae5', riskColor: '#059669' };
+    ad3 = { title: 'Tata Digital India Fund', desc: 'Capitalize on the IT sector\'s growth with historical 18-20% p.a. returns over 5 years. Ideal for long-term wealth creation.', image: require('../assets/tatamf.jpg'), cta: 'Start SIP', risk: 'High Risk', riskBg: '#fee2e2', riskColor: '#b91c1c' };
+  }
+
+  if (activeAd) {
+    let logoPath;
+    if (activeAd.logo && activeAd.logo.includes('swiggy')) logoPath = require('../assets/swiggy.jpg');
+    else if (activeAd.logo && activeAd.logo.includes('groww')) logoPath = require('../assets/groww.jpg');
+    else if (activeAd.logo && activeAd.logo.includes('cred')) logoPath = require('../assets/cred.jpg');
+    else logoPath = require('../assets/hdfc.jpg'); // Fallback
+
+    ad2 = { title: activeAd.headline || 'Top Recommendation', desc: activeAd.description || '', image: logoPath, cta: activeAd.cta || 'Learn More', isDynamic: true };
+  } else {
+    ad2 = { title: 'HDFC Index Fund (Nifty 50)', desc: 'Tracks top 50 Indian companies. Historical 12-14% returns. Perfect for starting a disciplined SIP.', image: require('../assets/hdfc.jpg'), cta: 'Start SIP', isDynamic: true };
+  }
+
   return (
     <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.contentContainer}>
 
@@ -461,7 +519,7 @@ export default function DashboardScreen({ tokenData }) {
           {/* TOP ACTIONS ROW */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <Text style={{ fontSize: 18, fontWeight: '800', color: '#0f172a' }}>Financial Overview</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={{ backgroundColor: '#4f46e5', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 6 }}
               onPress={() => setSelectedFile(null)}
             >
@@ -613,43 +671,43 @@ export default function DashboardScreen({ tokenData }) {
 
           {/* PROCESSED STATEMENTS LIST - Horizontal Scroll */}
           {pastStatements.length > 0 && (
-          <View style={styles.statementsHistoryCard}>
-            <Text style={styles.statementsHeaderTitle}>Processed Statements</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-              <TouchableOpacity
-                style={[styles.statementItemBtn, activeMonth === 'All-Time' && styles.statementItemBtnActive]}
-                onPress={() => loadPastStatement('All-Time')}
-                activeOpacity={0.7}
-              >
-                <View style={styles.statementTextCol}>
-                  <Text style={[styles.statementMonthText, activeMonth === 'All-Time' && styles.statementMonthTextActive]}>All-Time</Text>
-                  <Text style={styles.statementTxnText}>Combined Ledger</Text>
-                </View>
-              </TouchableOpacity>
-
-              {pastStatements.map((stmt, i) => (
+            <View style={styles.statementsHistoryCard}>
+              <Text style={styles.statementsHeaderTitle}>Processed Statements</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
                 <TouchableOpacity
-                  key={i}
-                  style={[
-                    styles.statementItemBtn,
-                    activeMonth === stmt.month && styles.statementItemBtnActive,
-                  ]}
-                  onPress={() => loadPastStatement(stmt.id, stmt.month)}
+                  style={[styles.statementItemBtn, activeMonth === 'All-Time' && styles.statementItemBtnActive]}
+                  onPress={() => loadPastStatement('All-Time')}
                   activeOpacity={0.7}
                 >
                   <View style={styles.statementTextCol}>
-                    <Text style={[styles.statementMonthText, activeMonth === stmt.month && styles.statementMonthTextActive]}>
-                      {stmt.month}
-                    </Text>
-                    <Text style={styles.statementTxnText}>{stmt.txCount} txns</Text>
+                    <Text style={[styles.statementMonthText, activeMonth === 'All-Time' && styles.statementMonthTextActive]}>All-Time</Text>
+                    <Text style={styles.statementTxnText}>Combined Ledger</Text>
                   </View>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
+
+                {pastStatements.map((stmt, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={[
+                      styles.statementItemBtn,
+                      activeMonth === stmt.month && styles.statementItemBtnActive,
+                    ]}
+                    onPress={() => loadPastStatement(stmt.id, stmt.month)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.statementTextCol}>
+                      <Text style={[styles.statementMonthText, activeMonth === stmt.month && styles.statementMonthTextActive]}>
+                        {stmt.month}
+                      </Text>
+                      <Text style={styles.statementTxnText}>{stmt.txCount} txns</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           )}
 
-           {/* FLAG BANNER */}
+          {/* FLAG BANNER */}
           {transactionHistory.some(tx => tx.isAnomaly) && (
             <View style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca', borderWidth: 1, borderRadius: 8, padding: 16, marginBottom: 24, flexDirection: 'row', alignItems: 'flex-start' }}>
               <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#fee2e2', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
@@ -766,7 +824,7 @@ export default function DashboardScreen({ tokenData }) {
           </View>
         </View>
       )}
-{activeView === 'Subscriptions' && (
+      {activeView === 'Subscriptions' && (
         <View style={styles.subTabWrapper}>
           <SubscriptionsTab
             formatCurrency={formatCurrency}
@@ -802,54 +860,54 @@ export default function DashboardScreen({ tokenData }) {
           {/* Card 1 */}
           <View style={styles.investmentCard}>
             <View style={styles.investmentCardHeader}>
-              <View style={[styles.riskBadge, styles.lowRiskBg]}>
-                <Text style={[styles.riskText, styles.lowRiskColor]}>Low Risk</Text>
+              <View style={[styles.riskBadge, { backgroundColor: ad1.riskBg }]}>
+                <Text style={[styles.riskText, { color: ad1.riskColor }]}>{ad1.risk}</Text>
               </View>
-              <Image source={require('../assets/icici.jpeg')} style={{ width: 80, height: 24 }} resizeMode="contain" />
+              <Image source={ad1.image} style={{ width: 80, height: 24 }} resizeMode="contain" />
             </View>
-            <Text style={styles.investNameTitle}>ICICI Prudential Liquid Fund</Text>
+            <Text style={styles.investNameTitle}>{ad1.title}</Text>
             <Text style={styles.investDescText}>
-              Earn ~7.1% p.a. with instant withdrawal capabilities. A much better alternative to leaving cash idle.
+              {ad1.desc}
             </Text>
             <TouchableOpacity style={styles.investActionBtn} activeOpacity={0.7}>
-              <Text style={styles.investActionBtnText}>Explore Fund</Text>
+              <Text style={styles.investActionBtnText}>{ad1.cta}</Text>
             </TouchableOpacity>
           </View>
 
           {/* Card 2 */}
           <View style={[styles.investmentCard, styles.topPickCard]}>
             <View style={styles.topPickBadge}>
-              <Text style={styles.topPickBadgeText}>TOP PICK</Text>
+              <Text style={styles.topPickBadgeText}>{ad2.isDynamic ? "AI TOP PICK" : "TOP PICK"}</Text>
             </View>
             <View style={styles.investmentCardHeader}>
               <View style={[styles.riskBadge, styles.medRiskBg]}>
-                <Text style={[styles.riskText, styles.medRiskColor]}>Medium Risk</Text>
+                <Text style={[styles.riskText, styles.medRiskColor]}>Highly Recommended</Text>
               </View>
-              <Image source={require('../assets/hdfc.jpeg')} style={{ width: 80, height: 24 }} resizeMode="contain" />
+              <Image source={ad2.image} style={{ width: 80, height: 24 }} resizeMode="contain" />
             </View>
-            <Text style={styles.investNameTitle}>HDFC Index Fund (Nifty 50)</Text>
+            <Text style={styles.investNameTitle}>{ad2.title}</Text>
             <Text style={styles.investDescText}>
-              Tracks top 50 Indian companies. Historical 12-14% returns. Perfect for starting a disciplined SIP.
+              {ad2.desc}
             </Text>
             <TouchableOpacity style={[styles.investActionBtn, styles.topPickActionBtn]} activeOpacity={0.7}>
-              <Text style={[styles.investActionBtnText, styles.topPickActionBtnText]}>Start SIP</Text>
+              <Text style={[styles.investActionBtnText, styles.topPickActionBtnText]}>{ad2.cta}</Text>
             </TouchableOpacity>
           </View>
 
           {/* Card 3 */}
           <View style={styles.investmentCard}>
             <View style={styles.investmentCardHeader}>
-              <View style={[styles.riskBadge, { backgroundColor: '#fee2e2' }]}>
-                <Text style={[styles.riskText, { color: '#b91c1c' }]}>High Risk</Text>
+              <View style={[styles.riskBadge, { backgroundColor: ad3.riskBg }]}>
+                <Text style={[styles.riskText, { color: ad3.riskColor }]}>{ad3.risk}</Text>
               </View>
-              <Image source={require('../assets/tatamf.jpeg')} style={{ width: 80, height: 24 }} resizeMode="contain" />
+              <Image source={ad3.image} style={{ width: 80, height: 24 }} resizeMode="contain" />
             </View>
-            <Text style={styles.investNameTitle}>Tata Digital India Fund</Text>
+            <Text style={styles.investNameTitle}>{ad3.title}</Text>
             <Text style={styles.investDescText}>
-              Capitalize on the IT sector's growth with historical 18-20% p.a. returns over 5 years. Ideal for long-term wealth creation.
+              {ad3.desc}
             </Text>
             <TouchableOpacity style={styles.investActionBtn} activeOpacity={0.7}>
-              <Text style={styles.investActionBtnText}>Explore Fund</Text>
+              <Text style={styles.investActionBtnText}>{ad3.cta}</Text>
             </TouchableOpacity>
           </View>
         </View>
