@@ -1,4 +1,4 @@
-version: '3.8'
+
 
 services:
   # The Python SQS Consumer (FastAPI + Background Thread)
@@ -10,8 +10,8 @@ services:
     container_name: ai_service_aws
     ports:
       - "8080:8080"
-    env_file:
-      - ./ai_service_aws/.env
+    environment:
+      - AWS_REGION=ap-south-1
     restart: unless-stopped
 
   # The Java Spring Boot Backend
@@ -23,9 +23,8 @@ services:
     container_name: api_service_aws
     ports:
       - "8081:8081"
-    env_file:
-      - ./ai_service_aws/.env
     environment:
+      - AWS_REGION=ap-south-1
       - SPRING_PROFILES_ACTIVE=dev
     depends_on:
       - ai-service
