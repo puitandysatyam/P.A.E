@@ -126,7 +126,7 @@ def process_statement(doc_id: str):
             config = Config(read_timeout=300, retries={'max_attempts': 1})
             bedrock = boto3.client('bedrock-runtime', region_name=AWS_REGION, config=config)
             response = bedrock.converse(
-                modelId="google.gemma-3-27b-it",
+                modelId="meta.llama3-8b-instruct-v1:0",
                 messages=[{"role": "user", "content": [{"text": prompt}]}],
                 inferenceConfig={"temperature": 0.0}
             )
