@@ -1,7 +1,7 @@
 import os
 import time
 import boto3
-import requests
+
 import json
 import re
 import uuid
