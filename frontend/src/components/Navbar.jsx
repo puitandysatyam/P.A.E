@@ -127,7 +127,7 @@ export default function Navbar({ onLogin }) {
           {/* Logo — Image version */}
           <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', flexShrink: 0, gap: '12px' }}>
             <div className="pr2-logo-circle" style={{ overflow: 'hidden', padding: 0, background: 'transparent' }}>
-              <img src="/rupee-radar-logo.png" alt="Rupee Radar Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src="/rupee-radar-logo.jpeg" alt="Rupee Radar Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
             <div style={{ fontSize: 24, fontWeight: 900, color: '#4f46e5', letterSpacing: '-1px' }}>
               Rupee Radar

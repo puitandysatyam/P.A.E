@@ -30,8 +30,8 @@ export default function Footer() {
 
         {/* Brand */}
         <div style={{ flex: '1 1 240px' }}>
-          <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.04em', color: '#0f172a', marginBottom: 12 }}>
-            RR<sup style={{ color: '#4f46e5', fontSize: 16, verticalAlign: 'super' }}>2</sup>
+          <div style={{ marginBottom: 16 }}>
+            <img src="/rupee-radar-logo.jpeg" alt="Rupee Radar Logo" style={{ height: '48px', width: 'auto', borderRadius: '50%' }} />
           </div>
           <div style={{ fontSize: 14, color: '#64748b', maxWidth: 300, lineHeight: 1.6 }}>
             <b>Rupee Radar</b> — AI-driven financial analysis for bank statements. Built to make every rupee accountable.
