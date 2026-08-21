@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import logo from '../assets/logo_pr2.jpeg';
+
 
 export default function Navbar({ onLogin }) {
   const [scrolled, setScrolled] = useState(false);
@@ -127,7 +127,9 @@ export default function Navbar({ onLogin }) {
           {/* Logo — circle only, no wordmark */}
           <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
             <div className="pr2-logo-circle">
-              <img src={logo} alt="PR² logo" />
+              <div style={{ fontSize: 24, fontWeight: 900, color: '#4f46e5', letterSpacing: '-1px' }}>
+                R<sup style={{ fontSize: 14, verticalAlign: 'super' }}>2</sup>
+              </div>
             </div>
           </div>
 

@@ -347,7 +347,7 @@ export default function HomePage({ onLogin }) {
               Decoupled microservice<br />architecture
             </h2>
             <p style={{ fontSize: 17, color: '#555', lineHeight: 1.7, fontWeight: 400 }}>
-              PR² stands for Pice Rupee Radar. It is an AI-powered financial intelligence platform designed to help users analyze, understand and optimize their banking expenses effortlessly.
+              RR stands for Rupee Radar. It is an AI-powered financial intelligence platform designed to help users analyze, understand and optimize their banking expenses effortlessly.
               A distributed microservice architecture that decouples data ingestion from AI computation, enabling low-latency financial analysis without bottlenecks.
             </p>
           </div>

@@ -1,8 +1,7 @@
 import React from 'react';
 import satyam from '../assets/satyam.jpeg';
 import rabishankar from '../assets/rabishankar.jpeg';
-import kathakali from '../assets/kathakali.jpeg';
-import saheli from '../assets/saheli.jpeg';
+import kathakali from '../assets/kathakali.png';
 
 const GitHubIcon = ({ size = 24, ...props }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -22,8 +21,7 @@ export default function Footer() {
   const teamMembers = [
   { name: 'Satyam Puitandy', email: 'puitandys05@gmail.com', github: 'https://github.com/puitandysatyam', linkedin: 'https://www.linkedin.com/in/satyampuitandy/', avatar: satyam },
   { name: 'Rabishankar Roy', email: 'rabishankarroy04@gmail.com', github: 'https://github.com/rabishankarroy04-svg', linkedin: 'https://www.linkedin.com/in/rabishankar-roy-055a52343/', avatar: rabishankar },
-  { name: 'Kathakali Das', email: '2004kathakali@gmail.com', github: 'https://github.com/Kathakali07', linkedin: 'https://www.linkedin.com/in/kathakali-kd-46a93623b/', avatar: kathakali },
-  { name: 'Saheli Panja', email: 'sahelipanja0@gmail.com', github: 'https://github.com/sahelipanja', linkedin: 'https://www.linkedin.com/in/sahelipanja/', avatar: saheli }
+  { name: 'Kathakali Das', email: '2004kathakali@gmail.com', github: 'https://github.com/Kathakali07', linkedin: 'https://www.linkedin.com/in/kathakali-kd-46a93623b/', avatar: kathakali }
 ];
 
   return (
@@ -33,13 +31,13 @@ export default function Footer() {
         {/* Brand */}
         <div style={{ flex: '1 1 240px' }}>
           <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.04em', color: '#0f172a', marginBottom: 12 }}>
-            PR<sup style={{ color: '#4f46e5', fontSize: 16, verticalAlign: 'super' }}>2</sup>
+            RR<sup style={{ color: '#4f46e5', fontSize: 16, verticalAlign: 'super' }}>2</sup>
           </div>
           <div style={{ fontSize: 14, color: '#64748b', maxWidth: 300, lineHeight: 1.6 }}>
-            <b>Pice Rupee Radar</b> — AI-driven financial analysis for bank statements. Built to make every rupee accountable.
+            <b>Rupee Radar</b> — AI-driven financial analysis for bank statements. Built to make every rupee accountable.
           </div>
           <div style={{ marginTop: 24, fontSize: 13, fontWeight: 600, color: '#94a3b8' }}>
-            Engineered by a specialized team of 4.
+            Engineered by a specialized team of 3.
           </div>
         </div>
 
