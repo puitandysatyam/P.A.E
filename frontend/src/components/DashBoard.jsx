@@ -41,7 +41,7 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
     return backendTxns.map(tx => ({
       ref: tx.txnId ? tx.txnId.substring(0, 8) : Math.random().toString(36).substring(7),
       date: tx.date || 'Unknown Date',
-      customer: tx.rawNarration || 'Unknown',
+      customer: tx.merchantName || tx.rawNarration || 'Unknown',
       amount: Math.abs(tx.amount || 0),
       status: 'Completed',
       type: tx.mlData?.predictedCategory || tx.type || 'Other',

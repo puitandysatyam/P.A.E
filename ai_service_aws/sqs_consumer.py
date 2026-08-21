@@ -58,16 +58,34 @@ def extract_merchant(text, txn_type="DEBIT"):
         "blinkit": ("Blinkit", "Food"),
         "zepto": ("Zepto", "Food"),
         "uber": ("Uber", "Travel"),
-        "ola": ("Ola", "Travel")
+        "ola": ("Ola", "Travel"),
+        "bajaj finserv": ("Bajaj Finserv", "EMI"),
+        "bajaj finance": ("Bajaj Finance", "EMI"),
+        "cred": ("CRED", "Bill Payment"),
+        "paytm": ("Paytm", "Bill Payment"),
+        "phonepe": ("PhonePe", "Bill Payment"),
+        "gpay": ("Google Pay", "Bill Payment"),
+        "google pay": ("Google Pay", "Bill Payment"),
     }
     
     for key, val in brands.items():
         if key in text_lower:
             return val[0], val[1]
             
-    # 2. UPI Logic
+    # 2. UPI Logic (Advanced Parsing)
     if text.startswith("UPI/") or "UPI" in text or "upi" in text_lower:
-        # Extract VPA if present
+        # Many UPI Txns are formatted like: UPI/DR/RefNo/MerchantName/Bank/...
+        parts = text.split("/")
+        if len(parts) >= 4:
+            merchant = parts[3].strip()
+            # If the extracted merchant matches any known brand
+            for key, val in brands.items():
+                if key in merchant.lower():
+                    return val[0], val[1]
+            cat = "UPI Received" if txn_type == "CREDIT" else "UPI Sent"
+            return merchant.title(), cat
+            
+        # Extract VPA if present as fallback
         vpa_match = re.search(r'[\w\.-]+@[\w\.-]+', text)
         vpa = vpa_match.group(0) if vpa_match else "Unknown UPI"
         
@@ -79,10 +97,10 @@ def extract_merchant(text, txn_type="DEBIT"):
     if "NEFT" in text or "IMPS" in text:
         parts = text.split("-")
         if len(parts) > 2:
-            return parts[2][:15].strip(), None
+            return parts[2][:15].strip().title(), None
     elif "/" in text:
-        return text.split("/")[0][:15].strip(), None
-    return text[:15].strip(), None
+        return text.split("/")[0][:15].strip().title(), None
+    return text[:20].strip().title(), None
 
 def process_statement(doc_id: str):
     print(f"Processing Document ID: {doc_id}")
@@ -215,6 +233,7 @@ def process_statement(doc_id: str):
                     if not hardcoded_cat:
                         predicted_category = "Subscription"
             
+        txn["merchantName"] = merchant_name
         txn["mlData"] = {
             "predictedCategory": predicted_category,
             "confidenceScore": confidence,
