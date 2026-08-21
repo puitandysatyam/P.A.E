@@ -71,12 +71,12 @@ public class StatementController {
             // 3. Kick off Async Background Processing
             java.util.concurrent.CompletableFuture.runAsync(() -> {
                 try {
-                    if (fileName.endsWith(".pdf") || "application/pdf".equals(contentType)) {
-                        String rawText = pdfParsingService.parseAndSanitize(fileBytes);
-                        document.setRawText(rawText);
-                    } else {
+                    if (fileName.endsWith(".csv") || "text/csv".equals(contentType)) {
                         List<Transaction> transactions = csvParsingService.parseAndSanitize(fileBytes);
                         document.setTransactions(transactions);
+                    } else {
+                        String rawText = pdfParsingService.parseAndSanitize(fileBytes);
+                        document.setRawText(rawText);
                     }
                     
                     document.setStatus("PROCESSING");

@@ -519,7 +519,7 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
                 transition: 'all 0.2s ease', minHeight: showResults ? '240px' : '120px', display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}
             >
-              <input type="file" ref={fileInputRef} onChange={handleFileInput} accept=".csv, .pdf" style={{ display: 'none' }} />
+              <input type="file" ref={fileInputRef} onChange={handleFileInput} accept=".csv, .pdf, .jpg, .jpeg, .png" style={{ display: 'none' }} />
               
               {showResults ? (
                 <div style={{ width: '100%', textAlign: 'left', animation: 'fadeIn 0.5s ease-in' }}>
