@@ -8,7 +8,7 @@ import uuid
 from collections import defaultdict
 from dotenv import load_dotenv
 from database import db_helper
-from inference import ml_engine
+
 from botocore.config import Config
 
 load_dotenv()
@@ -162,7 +162,7 @@ def process_statement(doc_id: str):
 
     confused_txns = []
 
-    # 2. First Pass: DistilBERT Classification & Feature Extraction
+    # 2. First Pass: Deterministic Classification & Feature Extraction
     for i, txn in enumerate(transactions):
         text = txn.get("rawNarration", "")
         date_str = txn.get("date", "")
@@ -170,30 +170,17 @@ def process_statement(doc_id: str):
         txn_type = txn.get("type", "DEBIT")
         
         merchant_name, hardcoded_cat = extract_merchant(text, txn_type)
-        
-        # 3. Anomaly Detection
         sketchiness = calculate_sketchiness(merchant_name)
-        velocity = len(date_amounts.get(date_str, []))
-        if txn_type == "CREDIT":
-            is_anomaly = False
-        else:
-            # We don't have exact time_of_day from standard bank PDFs, so we omit it and use the default
-            is_anomaly = ml_engine.detect_anomaly(amount, merchant_sketchiness_score=sketchiness)
         
-        # Categorization
+        predicted_category = "Pending"
+        confidence = 1.0
+        source = "Deterministic Engine"
+        is_anomaly = False
+        
         if hardcoded_cat:
             predicted_category = hardcoded_cat
-            confidence = 1.0
-            top2_distance = 1.0
-            source = "Deterministic Engine"
         else:
-            cat_result = ml_engine.categorize_transaction(text)
-            predicted_category = cat_result["predictedCategory"]
-            confidence = cat_result.get("confidenceScore", 1.0)
-            top2_distance = cat_result.get("top2Distance", 1.0)
-            source = "DistilBERT"
-            # User request: Always override DistilBERT because its accuracy is low on Indian Txns
-            confused_txns.append({'index': i, 'text': text})
+            confused_txns.append({'index': i, 'text': text, 'amount': amount, 'sketchiness': sketchiness})
         
         # Subscription vs Routine Spend Analysis
         is_recurring = False
@@ -217,14 +204,16 @@ def process_statement(doc_id: str):
                 avg_amount = sum(amounts_list) / merchant_count
                 if avg_amount > 0 and (variance / avg_amount) < 0.20:
                     is_recurring = True
-                    predicted_category = "Routine Habit"
+                    if not hardcoded_cat:
+                        predicted_category = "Routine Habit"
                     
             # 3. Fallback: Known Subscription or Ends in 9
             elif not is_recurring and merchant_count == 1:
                 amount_ends_in_9 = str(int(amount)).endswith("9")
                 if predicted_category == "Subscription" or amount_ends_in_9:
                     is_recurring = True
-                    predicted_category = "Subscription"
+                    if not hardcoded_cat:
+                        predicted_category = "Subscription"
             
         txn["mlData"] = {
             "predictedCategory": predicted_category,
@@ -234,20 +223,18 @@ def process_statement(doc_id: str):
             "source": source
         }
 
-    # 3. Batch LLM Categorization via AWS Bedrock
+    # 3. Batch LLM Categorization & Anomaly Detection via AWS Bedrock
     if confused_txns:
-        print(f"Batching {len(confused_txns)} transactions to AWS Bedrock to override DistilBERT...")
-        prompt = "Categorize the following transactions into strictly one of these categories: [Food, Shopping, Travel, Salary, Utilities, Subscriptions, Investment, Others]. Return ONLY a valid JSON array of objects with keys 'index' and 'category'. Do not wrap in markdown or give any explanations.\n\nTransactions:\n"
+        print(f"Batching {len(confused_txns)} transactions to AWS Bedrock for categorization and anomaly detection...")
+        prompt = "You are a financial AI. Categorize the following transactions into strictly one of these categories: [Food, Shopping, Travel, Salary, Utilities, Subscriptions, Investment, Others]. Also detect if the transaction is an anomaly based on its text, amount, and sketchiness. Return ONLY a valid JSON array of objects with keys 'index', 'category', and 'isAnomaly' (boolean). Do not wrap in markdown or give any explanations.\n\nTransactions:\n"
         for c in confused_txns:
-            # If the deterministic engine already flagged it as a Routine Habit/Subscription during the loop, skip sending it to Bedrock to save tokens
+            # If the deterministic engine already flagged it as a Routine Habit/Subscription during the loop, we already know the category, but we still need anomaly detection.
             current_cat = transactions[c['index']]["mlData"]["predictedCategory"]
             if current_cat in ["Routine Habit", "Subscription"]:
-                transactions[c['index']]["mlData"]["source"] = "Deterministic Engine"
-                transactions[c['index']]["mlData"]["confidenceScore"] = 0.95
-                continue
-            prompt += f"Index: {c['index']} | Text: {c['text']}\n"
+                prompt += f"Index: {c['index']} | Text: {c['text']} | Amount: {c['amount']} | Sketchiness: {c['sketchiness']} (Note: Pre-categorized as {current_cat}, just verify anomaly)\n"
+            else:
+                prompt += f"Index: {c['index']} | Text: {c['text']} | Amount: {c['amount']} | Sketchiness: {c['sketchiness']}\n"
             
-        # Only call bedrock if there are still items in the prompt after filtering routines
         if "Index:" in prompt:
             try:
                 config = Config(read_timeout=300, retries={'max_attempts': 1})
@@ -269,8 +256,13 @@ def process_statement(doc_id: str):
                 for res in llm_results:
                     idx = res.get('index')
                     cat = res.get('category')
-                    if idx is not None and cat:
-                        transactions[idx]["mlData"]["predictedCategory"] = cat
+                    is_anomaly = res.get('isAnomaly', False)
+                    if idx is not None:
+                        current_cat = transactions[idx]["mlData"]["predictedCategory"]
+                        # Do not override category if it was determined as Routine Habit / Subscription deterministically
+                        if current_cat not in ["Routine Habit", "Subscription"] and cat:
+                            transactions[idx]["mlData"]["predictedCategory"] = cat
+                        transactions[idx]["mlData"]["isAnomaly"] = bool(is_anomaly)
                         transactions[idx]["mlData"]["confidenceScore"] = 0.99
                         transactions[idx]["mlData"]["source"] = "AWS_Bedrock"
             except Exception as e:
@@ -373,7 +365,7 @@ def process_statement(doc_id: str):
     ai_summary = "AI Advisor is currently analyzing your data. Please check back later."
     try:
         bedrock = boto3.client('bedrock-runtime', region_name=AWS_REGION)
-        prompt = f"You are a professional, empathetic, and highly analytical financial advisor for a premium FinTech app. Your client has a total monthly income of ₹{total_income:,.2f} and total expenses of ₹{total_expense:,.2f}. Their highest spending category is '{highest_cat}'. Write a 2-3 sentence personalized financial recommendation that is encouraging, insightful, and professional. Do not use markdown, and ensure the tone is suitable for a professional banking application."
+        prompt = f"You are a professional, empathetic, and highly analytical financial advisor for a premium FinTech app. Your client has a total monthly income of {total_income} and total expenses of {total_expense}. Their highest spending category is '{highest_cat}'. Write a 2-3 sentence personalized financial recommendation that is encouraging, insightful, and professional. Do not use markdown, and ensure the tone is suitable for a professional banking application. Strictly format all currency values as Indian Rupees (INR) using the ₹ symbol, adhering to the Indian numbering system (e.g., ₹1,50,000 instead of ₹150,000)."
         
         response = bedrock.converse(
             modelId="google.gemma-3-27b-it",

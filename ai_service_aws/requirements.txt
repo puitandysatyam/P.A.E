@@ -3,9 +3,6 @@ fastapi
 uvicorn
 boto3==1.34.0
 python-dotenv==1.0.0
-tensorflow-cpu
 scikit-learn
 pandas
 numpy
-transformers
-torch
