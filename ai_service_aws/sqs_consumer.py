@@ -115,7 +115,7 @@ def process_statement(doc_id: str):
     
     # 1. If we have rawText but no transactions, we need to extract transactions via Bedrock LLM first
     if raw_text and not transactions:
-        print(f"Extracting transactions from raw PDF text via Bedrock for {doc_id}...")
+        print(f"Extracting transactions from raw PDF text via Llama3 (us-east-1) for {doc_id}...")
         prompt = "You are a financial data extraction AI. Extract all bank transactions from the following raw text extracted from a PDF bank statement. " + \
                  "Return ONLY a strict JSON array of objects. Do not wrap it in markdown block quotes. Each object must have exactly these keys: " + \
                  "'date' (String, YYYY-MM-DD), 'rawNarration' (String), 'amount' (Number), 'type' (String, strictly 'CREDIT' or 'DEBIT'). " + \
@@ -151,6 +151,8 @@ def process_statement(doc_id: str):
             print(f"Successfully extracted {len(transactions)} transactions.")
         except Exception as e:
             print(f"Error extracting transactions via Bedrock: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     total_income = 0.0
     total_expense = 0.0
