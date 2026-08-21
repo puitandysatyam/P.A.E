@@ -124,7 +124,8 @@ def process_statement(doc_id: str):
 
         try:
             config = Config(read_timeout=300, retries={'max_attempts': 1})
-            bedrock = boto3.client('bedrock-runtime', region_name=AWS_REGION, config=config)
+            # Hardcode us-east-1 for Bedrock because ap-south-1 has limited model support
+            bedrock = boto3.client('bedrock-runtime', region_name='us-east-1', config=config)
             response = bedrock.converse(
                 modelId="meta.llama3-8b-instruct-v1:0",
                 messages=[{"role": "user", "content": [{"text": prompt}]}],
@@ -257,7 +258,8 @@ def process_statement(doc_id: str):
         if "Index:" in prompt:
             try:
                 config = Config(read_timeout=300, retries={'max_attempts': 1})
-                bedrock = boto3.client('bedrock-runtime', region_name=AWS_REGION, config=config)
+                # Hardcode us-east-1 for Bedrock because ap-south-1 has limited model support
+                bedrock = boto3.client('bedrock-runtime', region_name='us-east-1', config=config)
                 response = bedrock.converse(
                     modelId="meta.llama3-8b-instruct-v1:0",
                     messages=[{"role": "user", "content": [{"text": prompt}]}],
