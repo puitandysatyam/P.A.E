@@ -455,8 +455,11 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
       {/* ── NAVBAR ── */}
       <nav style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '16px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 50 }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.04em', color: '#0f172a', cursor: 'pointer' }} onClick={() => setActiveView('Overview')}>
-            PR<sup style={{ color: '#4f46e5', fontSize: 14, verticalAlign: 'super' }}>2</sup>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setActiveView('Overview')}>
+            <img src="/rupee-radar-logo.jpeg" alt="Rupee Radar Logo" style={{ height: '32px', width: 'auto', borderRadius: '50%' }} />
+            <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.04em', color: '#0f172a' }}>
+              Rupee Radar
+            </div>
           </div>
           {tokenData?.subscriptionTier === 'PRO' && (
             <span style={{
