@@ -177,7 +177,7 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
     const fetchMyStatements = async () => {
       try {
         const res = await fetch(`${API_URL}/api/statements/my-statements`, {
-          headers: { 'Authorization': `Bearer ${tokenData?.token}` }
+          headers: { 'ngrok-skip-browser-warning': 'true', 'Authorization': `Bearer ${tokenData?.token}` }
         });
         if (res.ok) {
           const docs = await res.json();
@@ -187,7 +187,7 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
 
             const completedDocs = docs.filter(d => d.status === 'COMPLETED');
             if (completedDocs.length > 0) {
-              fetch(`${API_URL}/api/statements/status/${completedDocs[completedDocs.length - 1].id}`, { headers: { 'Authorization': `Bearer ${tokenData?.token}` } })
+              fetch(`${API_URL}/api/statements/status/${completedDocs[completedDocs.length - 1].id}`, { headers: { 'ngrok-skip-browser-warning': 'true', 'Authorization': `Bearer ${tokenData?.token}` } })
                 .then(r => r.json())
                 .then(d => { if (d.aiSummary) setAiSummaryText(d.aiSummary); });
             }
@@ -223,7 +223,7 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
   const loadCompletedDocument = async (docId) => {
     try {
       const res = await fetch(`${API_URL}/api/statements/my-statements`, {
-        headers: { 'Authorization': `Bearer ${tokenData?.token}` }
+        headers: { 'ngrok-skip-browser-warning': 'true', 'Authorization': `Bearer ${tokenData?.token}` }
       });
       if (res.ok) {
         const docs = await res.json();
@@ -232,7 +232,7 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
 
         const completedDocs = docs.filter(d => d.status === 'COMPLETED');
         if (completedDocs.length > 0) {
-          fetch(`${API_URL}/api/statements/status/${completedDocs[completedDocs.length - 1].id}`, { headers: { 'Authorization': `Bearer ${tokenData?.token}` } })
+          fetch(`${API_URL}/api/statements/status/${completedDocs[completedDocs.length - 1].id}`, { headers: { 'ngrok-skip-browser-warning': 'true', 'Authorization': `Bearer ${tokenData?.token}` } })
             .then(r => r.json())
             .then(d => { if (d.aiSummary) setAiSummaryText(d.aiSummary); });
         }
@@ -272,7 +272,7 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
       pollInterval = setInterval(async () => {
         try {
           const res = await fetch(`${API_URL}/api/statements/status/${activeDocId}`, {
-             headers: { 'Authorization': `Bearer ${tokenData?.token}` }
+             headers: { 'ngrok-skip-browser-warning': 'true', 'Authorization': `Bearer ${tokenData?.token}` }
           });
           const data = await res.json();
           if (data.status === 'EXTRACTING_PDF') {
@@ -323,7 +323,7 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
     try {
       const res = await fetch(`${API_URL}/api/statements/upload`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${tokenData?.token}` },
+        headers: { 'ngrok-skip-browser-warning': 'true', 'Authorization': `Bearer ${tokenData?.token}` },
         body: formData
       });
       const data = await res.json();
@@ -351,7 +351,7 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
       const doc = filtered[filtered.length - 1];
       if (doc && doc.status === 'COMPLETED') {
         setActiveDocId(doc.id);
-        fetch(`${API_URL}/api/statements/status/${doc.id}`, { headers: { 'Authorization': `Bearer ${tokenData?.token}` } })
+        fetch(`${API_URL}/api/statements/status/${doc.id}`, { headers: { 'ngrok-skip-browser-warning': 'true', 'Authorization': `Bearer ${tokenData?.token}` } })
           .then(r => r.json())
           .then(d => { if (d.aiSummary) setAiSummaryText(d.aiSummary); });
       }
@@ -437,7 +437,7 @@ export default function Dashboard({ onLogout, tokenData, onUpdateTier }) {
       if (activeDocId) {
         await fetch(`${API_URL}/api/statements/${activeDocId}/upgrade`, {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${tokenData?.token}` }
+          headers: { 'ngrok-skip-browser-warning': 'true', 'Authorization': `Bearer ${tokenData?.token}` }
         });
       }
       if (onUpdateTier) onUpdateTier('PRO');
