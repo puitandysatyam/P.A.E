@@ -12,6 +12,7 @@ services:
       - "8080:8080"
     environment:
       - AWS_REGION=ap-south-1
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
     restart: unless-stopped
 
   # The Java Spring Boot Backend

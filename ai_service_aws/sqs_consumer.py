@@ -5,6 +5,8 @@ import boto3
 import json
 import re
 import uuid
+import urllib.request
+import urllib.error
 from collections import defaultdict
 from dotenv import load_dotenv
 from database import db_helper
@@ -30,6 +32,51 @@ def get_queue_url():
         return response['QueueUrl']
 
 QUEUE_URL = get_queue_url()
+
+# ──────────────────────────────────────────────────────────────
+# Unified LLM Caller: Bedrock first → Gemini API fallback
+# ──────────────────────────────────────────────────────────────
+def _call_gemini(prompt, temperature=0.0):
+    """Call Google Gemini API directly via HTTP. No SDK needed."""
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+    payload = json.dumps({
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": temperature}
+    })
+    req = urllib.request.Request(url, data=payload.encode('utf-8'), headers={'Content-Type': 'application/json'})
+    with urllib.request.urlopen(req, timeout=300) as resp:
+        result = json.loads(resp.read())
+        return result['candidates'][0]['content']['parts'][0]['text'].strip()
+
+def call_llm(prompt, temperature=0.0):
+    """Try AWS Bedrock first. If blocked, fall back to Gemini API."""
+    # 1. Try AWS Bedrock
+    try:
+        config = Config(read_timeout=300, retries={'max_attempts': 1})
+        bedrock = boto3.client('bedrock-runtime', region_name='us-east-1', config=config)
+        response = bedrock.converse(
+            modelId="meta.llama3-8b-instruct-v1:0",
+            messages=[{"role": "user", "content": [{"text": prompt}]}],
+            inferenceConfig={"maxTokens": 4096, "temperature": max(temperature, 0.01)}
+        )
+        text = response['output']['message']['content'][0]['text'].strip()
+        print("  ✅ LLM response via AWS Bedrock (Llama3)")
+        return text
+    except Exception as bedrock_err:
+        print(f"  ⚠️ Bedrock failed: {bedrock_err}")
+
+    # 2. Fallback to Gemini API
+    if GEMINI_API_KEY and GEMINI_API_KEY != "dummy_key":
+        try:
+            text = _call_gemini(prompt, temperature)
+            print("  ✅ LLM response via Google Gemini (Fallback)")
+            return text
+        except Exception as gemini_err:
+            print(f"  ❌ Gemini fallback also failed: {gemini_err}")
+            raise gemini_err
+    else:
+        print("  ❌ No GEMINI_API_KEY set. Cannot fall back.")
+        raise Exception("Both Bedrock and Gemini failed. Set GEMINI_API_KEY env var.")
 
 def calculate_sketchiness(merchant_string):
     merchant_string = str(merchant_string)
@@ -115,7 +162,7 @@ def process_statement(doc_id: str):
     
     # 1. If we have rawText but no transactions, we need to extract transactions via Bedrock LLM first
     if raw_text and not transactions:
-        print(f"Extracting transactions from raw PDF text via Llama3 (us-east-1) for {doc_id}...")
+        print(f"Extracting transactions from raw PDF text for {doc_id}...")
         prompt = "You are a financial data extraction AI. Extract all bank transactions from the following raw text extracted from a PDF bank statement. " + \
                  "Return ONLY a strict JSON array of objects. Do not wrap it in markdown block quotes. Each object must have exactly these keys: " + \
                  "'date' (String, YYYY-MM-DD), 'rawNarration' (String), 'amount' (Number), 'type' (String, strictly 'CREDIT' or 'DEBIT'). " + \
@@ -123,15 +170,7 @@ def process_statement(doc_id: str):
                  "Do not include any explanation or extra text.\n\nRAW PDF TEXT:\n" + raw_text
 
         try:
-            config = Config(read_timeout=300, retries={'max_attempts': 1})
-            # Hardcode us-east-1 for Bedrock because ap-south-1 has limited model support
-            bedrock = boto3.client('bedrock-runtime', region_name='us-east-1', config=config)
-            response = bedrock.converse(
-                modelId="meta.llama3-8b-instruct-v1:0",
-                messages=[{"role": "user", "content": [{"text": prompt}]}],
-                inferenceConfig={"temperature": 0.0}
-            )
-            extracted_text = response['output']['message']['content'][0]['text'].strip()
+            extracted_text = call_llm(prompt, temperature=0.0)
             
             # Clean JSON wrapping
             extracted_text = re.sub(r"^```json\s*", "", extracted_text)
@@ -150,7 +189,7 @@ def process_statement(doc_id: str):
                 
             print(f"Successfully extracted {len(transactions)} transactions.")
         except Exception as e:
-            print(f"Error extracting transactions via Bedrock: {e}")
+            print(f"Error extracting transactions: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -259,16 +298,7 @@ def process_statement(doc_id: str):
             
         if "Index:" in prompt:
             try:
-                config = Config(read_timeout=300, retries={'max_attempts': 1})
-                # Hardcode us-east-1 for Bedrock because ap-south-1 has limited model support
-                bedrock = boto3.client('bedrock-runtime', region_name='us-east-1', config=config)
-                response = bedrock.converse(
-                    modelId="meta.llama3-8b-instruct-v1:0",
-                    messages=[{"role": "user", "content": [{"text": prompt}]}],
-                    inferenceConfig={"temperature": 0.0}
-                )
-                
-                llm_text = response['output']['message']['content'][0]['text'].strip()
+                llm_text = call_llm(prompt, temperature=0.0)
                 
                 # Manual regex to handle markdown in python
                 llm_text = re.sub(r"^```json\s*", "", llm_text)
@@ -287,7 +317,7 @@ def process_statement(doc_id: str):
                             transactions[idx]["mlData"]["predictedCategory"] = cat
                         transactions[idx]["mlData"]["isAnomaly"] = bool(is_anomaly)
                         transactions[idx]["mlData"]["confidenceScore"] = 0.99
-                        transactions[idx]["mlData"]["source"] = "AWS_Bedrock"
+                        transactions[idx]["mlData"]["source"] = "LLM"
             except Exception as e:
                 print(f"AWS Bedrock Batch Categorization exception: {e}")
                 # Fallback mapping if Bedrock fails
@@ -387,15 +417,8 @@ def process_statement(doc_id: str):
     # 5. Generate AI Financial Advice instantly before saving COMPLETED status
     ai_summary = "AI Advisor is currently analyzing your data. Please check back later."
     try:
-        bedrock = boto3.client('bedrock-runtime', region_name=AWS_REGION)
         prompt = f"You are a professional, empathetic, and highly analytical financial advisor for a premium FinTech app. Your client has a total monthly income of {total_income} and total expenses of {total_expense}. Their highest spending category is '{highest_cat}'. Write a 2-3 sentence personalized financial recommendation that is encouraging, insightful, and professional. Do not use markdown, and ensure the tone is suitable for a professional banking application. Strictly format all currency values as Indian Rupees (INR) using the ₹ symbol, adhering to the Indian numbering system (e.g., ₹1,50,000 instead of ₹150,000)."
-        
-        response = bedrock.converse(
-            modelId="google.gemma-3-27b-it",
-            messages=[{"role": "user", "content": [{"text": prompt}]}],
-            inferenceConfig={"temperature": 0.5}
-        )
-        ai_summary = response['output']['message']['content'][0]['text'].strip()
+        ai_summary = call_llm(prompt, temperature=0.5)
         print("Generated AI Financial Advice.")
     except Exception as e:
         print(f"Error generating AI summary: {e}")
